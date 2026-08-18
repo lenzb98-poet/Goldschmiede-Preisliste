@@ -2,866 +2,991 @@
 <html lang="de">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Goldschmiede Preisliste</title>
 <style>
   :root{
-    --bg:#faf8f4;
-    --bg-card:#ffffff;
-    --border:#e3ddd0;
-    --border-strong:#c9bfa8;
-    --text:#2b2620;
-    --text-dim:#7a7364;
-    --accent:#8a6d3b;
-    --accent-dark:#6b5228;
-    --accent-bg:#f1e6cf;
-    --danger:#a33b2e;
-    --danger-bg:#f7e6e3;
-    --radius:14px;
-    --shadow:0 1px 3px rgba(0,0,0,0.06);
+    --bg:#f7f5f0;
+    --paper:#fffefb;
+    --line:#e8e2d6;
+    --line-firm:#d3cab6;
+    --ink:#2a2520;
+    --ink-soft:#857c6d;
+    --gold:#8b6f47;
+    --gold-deep:#6a5334;
+    --gold-wash:#f1e9da;
+    --warn:#9c4a2f;
+    --r:16px;
+    --tap:52px;
   }
-  *{box-sizing:border-box;}
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
   html,body{margin:0;padding:0;}
   body{
-    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    font:400 18px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
     background:var(--bg);
-    color:var(--text);
-    font-size:19px;
-    line-height:1.4;
-    padding-bottom:60px;
+    color:var(--ink);
+    padding-bottom:40px;
   }
-  .wrap{max-width:900px;margin:0 auto;padding:16px;}
-  h1{font-size:1.4rem;margin:4px 0 16px;text-align:center;color:var(--accent-dark);font-weight:700;letter-spacing:.02em;}
+  input,button,select{font:inherit;color:inherit;}
+  button{cursor:pointer;background:none;border:none;padding:0;}
 
-  /* Search */
-  .search-box{
-    position:sticky;top:0;z-index:20;
-    background:var(--bg);
-    padding:8px 0 12px;
+  .wrap{max-width:940px;margin:0 auto;padding:0 16px 16px;}
+
+  /* ---------- Kopf ---------- */
+  .masthead{padding:20px 0 10px;text-align:center;}
+  .masthead h1{
+    margin:0;font-size:1.25rem;font-weight:600;letter-spacing:.09em;
+    text-transform:uppercase;color:var(--gold-deep);
   }
+  .masthead p{margin:5px 0 0;font-size:.82rem;color:var(--ink-soft);letter-spacing:.03em;}
+
+  /* ---------- Suche ---------- */
+  .searchbar{position:sticky;top:0;z-index:30;background:var(--bg);padding:8px 0 14px;}
+  .searchbar-inner{position:relative;}
   #search{
-    width:100%;
-    font-size:1.15rem;
-    padding:16px 18px;
-    border-radius:var(--radius);
-    border:2px solid var(--border-strong);
-    background:var(--bg-card);
-    color:var(--text);
-  }
-  #search:focus{outline:3px solid var(--accent-bg);border-color:var(--accent);}
-
-  .search-results{margin-top:10px;}
-  .search-hit{
-    background:var(--bg-card);
-    border:1px solid var(--border);
-    border-radius:var(--radius);
-    padding:10px 14px;
-    margin-bottom:8px;
-    box-shadow:var(--shadow);
-  }
-  .search-hit .hit-cat{font-size:.85rem;color:var(--text-dim);}
-
-  /* Buttons */
-  button{
-    font-family:inherit;
-    font-size:1rem;
-    cursor:pointer;
-  }
-  .btn{
-    border:none;
-    border-radius:10px;
-    padding:12px 16px;
-    background:var(--accent);
-    color:#fff;
-    font-weight:600;
-  }
-  .btn:hover{background:var(--accent-dark);}
-  .btn.secondary{
-    background:var(--bg-card);
-    color:var(--text);
-    border:1.5px solid var(--border-strong);
-  }
-  .btn.secondary:hover{background:var(--accent-bg);}
-  .btn.danger{background:var(--danger);}
-  .btn.danger:hover{background:#7e2c22;}
-  .icon-btn{
-    border:none;
-    background:transparent;
-    color:var(--text-dim);
-    font-size:1.3rem;
-    padding:8px 10px;
-    border-radius:8px;
-    line-height:1;
-  }
-  .icon-btn:hover{background:var(--accent-bg);color:var(--accent-dark);}
-
-  /* Sections */
-  .section{margin-bottom:26px;}
-  .section-title{
-    font-size:1rem;
-    color:var(--text-dim);
-    text-transform:uppercase;
-    letter-spacing:.06em;
-    margin:0 0 10px 2px;
-    font-weight:700;
-  }
-
-  /* Category grid on start page */
-  .cat-grid{
-    display:grid;
-    grid-template-columns:repeat(auto-fill,minmax(160px,1fr));
-    gap:12px;
-  }
-  .cat-tile{
-    background:var(--bg-card);
-    border:1.5px solid var(--border);
-    border-radius:var(--radius);
-    padding:22px 14px;
-    text-align:center;
-    font-size:1.15rem;
-    font-weight:700;
-    color:var(--text);
-    box-shadow:var(--shadow);
-    min-height:88px;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-  }
-  .cat-tile:hover{border-color:var(--accent);background:var(--accent-bg);}
-  .cat-tile .cat-count{
-    display:block;
-    font-size:.8rem;
-    font-weight:400;
-    color:var(--text-dim);
-    margin-top:4px;
-  }
-  .cat-tile-wrap{position:relative;}
-  .cat-tile-edit{
-    position:absolute;top:4px;right:4px;
-    font-size:1rem;
-    padding:4px 8px;
-    background:rgba(255,255,255,0.85);
-    border-radius:8px;
-    border:1px solid var(--border);
-  }
-  .add-cat-row{display:flex;gap:8px;margin-top:12px;}
-  .add-cat-row input{
-    flex:1;
-    padding:12px;
-    border-radius:10px;
-    border:1.5px solid var(--border-strong);
-    font-size:1rem;
-  }
-
-  /* Recently used */
-  .recent-list .entry-row{background:#fffdf8;}
-
-  /* Category detail */
-  .cat-header{display:flex;align-items:center;gap:8px;margin-bottom:14px;flex-wrap:wrap;}
-  .cat-header h2{margin:0;font-size:1.3rem;flex:1;color:var(--accent-dark);}
-  .back-btn{font-size:1.5rem;padding:6px 12px;}
-
-  /* Entry rows */
-  .entries{display:flex;flex-direction:column;gap:10px;}
-  .entry-row{
-    background:var(--bg-card);
-    border:1.5px solid var(--border);
-    border-radius:var(--radius);
-    padding:12px;
-    box-shadow:var(--shadow);
-    display:grid;
-    grid-template-columns:64px 1fr auto;
-    gap:10px;
-    align-items:start;
-  }
-  .entry-thumb-wrap{
-    width:64px;height:64px;
-    border-radius:10px;
-    overflow:hidden;
-    background:var(--accent-bg);
-    display:flex;align-items:center;justify-content:center;
-    cursor:pointer;
-    border:1px solid var(--border);
-    flex-shrink:0;
-  }
-  .entry-thumb-wrap img{width:100%;height:100%;object-fit:cover;display:block;}
-  .entry-thumb-wrap .no-img{font-size:1.6rem;color:var(--border-strong);}
-  .entry-fields{display:flex;flex-direction:column;gap:6px;min-width:0;}
-  .entry-fields input[type=text],
-  .entry-fields input.field{
-    width:100%;
-    font-size:1.05rem;
-    padding:9px 10px;
-    border-radius:9px;
-    border:1.5px solid var(--border);
-    background:#fff;
-    color:var(--text);
-  }
-  .entry-fields input:focus{outline:none;border-color:var(--accent);background:#fffef9;}
-  .field-name{font-weight:700;font-size:1.15rem !important;}
-  .row-line2{display:flex;gap:8px;flex-wrap:wrap;}
-  .row-line2 > *{flex:1;min-width:110px;}
-  .price-wrap{position:relative;display:flex;align-items:center;}
-  .price-wrap input{padding-right:32px;text-align:right;}
-  .price-wrap .eur{position:absolute;right:10px;color:var(--text-dim);pointer-events:none;font-weight:600;}
-  .meta-line{font-size:.82rem;color:var(--text-dim);margin-top:2px;display:flex;gap:10px;flex-wrap:wrap;}
-  .meta-line .stale{color:var(--danger);font-weight:600;}
-  .entry-actions{display:flex;flex-direction:column;gap:6px;align-items:center;}
-
-  .add-entry-btn{
-    width:100%;
-    padding:16px;
-    border-radius:var(--radius);
-    border:2px dashed var(--border-strong);
-    background:transparent;
-    color:var(--accent-dark);
+    width:100%;height:var(--tap);
+    padding:0 46px 0 20px;
     font-size:1.1rem;
-    font-weight:700;
-    margin-top:14px;
+    background:var(--paper);
+    border:1.5px solid var(--line-firm);
+    border-radius:var(--r);
   }
-  .add-entry-btn:hover{background:var(--accent-bg);}
+  #search::placeholder{color:var(--ink-soft);}
+  #search:focus{outline:none;border-color:var(--gold);box-shadow:0 0 0 4px var(--gold-wash);}
+  .search-clear{
+    position:absolute;right:6px;top:6px;
+    width:40px;height:40px;border-radius:10px;
+    font-size:1.3rem;color:var(--ink-soft);display:none;
+  }
+  .search-clear:hover{background:var(--gold-wash);color:var(--gold-deep);}
+  .searching .search-clear{display:block;}
 
-  /* image lightbox */
-  .lightbox{
-    position:fixed;inset:0;background:rgba(20,16,10,0.85);
+  /* ---------- Abschnitte ---------- */
+  .section{margin-bottom:30px;}
+  .section-head{
+    display:flex;align-items:baseline;gap:10px;margin:0 2px 12px;
+  }
+  .section-head h2{
+    margin:0;font-size:.8rem;font-weight:700;letter-spacing:.11em;
+    text-transform:uppercase;color:var(--ink-soft);
+  }
+  .section-head .count{font-size:.8rem;color:var(--ink-soft);}
+
+  /* ---------- Kategorie-Kacheln ---------- */
+  .cats{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:12px;}
+  .cat{
+    position:relative;background:var(--paper);border:1.5px solid var(--line);
+    border-radius:var(--r);overflow:hidden;
+  }
+  .cat-open{
+    display:block;width:100%;text-align:left;
+    padding:20px 52px 20px 20px;min-height:92px;
+  }
+  .cat-open:hover{background:var(--gold-wash);}
+  .cat-name{display:block;font-size:1.2rem;font-weight:600;line-height:1.25;}
+  .cat-sub{display:block;margin-top:5px;font-size:.82rem;color:var(--ink-soft);}
+  .cat-edit{
+    position:absolute;top:8px;right:8px;
+    width:40px;height:40px;border-radius:10px;
+    font-size:1rem;color:var(--ink-soft);
+  }
+  .cat-edit:hover{background:var(--gold-wash);color:var(--gold-deep);}
+  .cat.editing .cat-open,.cat.editing .cat-edit{display:none;}
+  .cat-editor{padding:14px;display:none;}
+  .cat.editing .cat-editor{display:block;}
+  .cat-editor input{
+    width:100%;height:46px;padding:0 12px;margin-bottom:10px;
+    background:#fff;border:1.5px solid var(--line-firm);border-radius:10px;font-size:1.05rem;
+  }
+  .cat-editor input:focus{outline:none;border-color:var(--gold);}
+  .cat-editor-row{display:flex;gap:8px;flex-wrap:wrap;}
+
+  .cat-add{display:flex;gap:10px;margin-top:14px;}
+  .cat-add input{
+    flex:1;height:var(--tap);padding:0 18px;
+    background:var(--paper);border:1.5px dashed var(--line-firm);
+    border-radius:var(--r);font-size:1.02rem;
+  }
+  .cat-add input:focus{outline:none;border-style:solid;border-color:var(--gold);}
+
+  /* ---------- Knöpfe ---------- */
+  .btn{
+    display:inline-flex;align-items:center;justify-content:center;gap:7px;
+    min-height:46px;padding:0 20px;border-radius:12px;
+    font-size:.98rem;font-weight:600;
+    background:var(--gold);color:#fff;
+  }
+  .btn:hover{background:var(--gold-deep);}
+  .btn.ghost{background:var(--paper);color:var(--ink);border:1.5px solid var(--line-firm);}
+  .btn.ghost:hover{background:var(--gold-wash);border-color:var(--gold);}
+  .btn.warn{background:var(--warn);color:#fff;}
+  .btn.warn:hover{background:#823a23;}
+
+  /* ---------- Zeilen ---------- */
+  .rows{display:flex;flex-direction:column;gap:12px;}
+  /* Die Tab-Reihenfolge folgt dem DOM: Bezeichnung, Preis, Notiz, Dauer.
+     Die Darstellung wird davon über feste Grid-Plätze entkoppelt,
+     damit der Preis rechts steht, aber als zweites angesprungen wird. */
+  .row{
+    background:var(--paper);border:1.5px solid var(--line);
+    border-radius:var(--r);padding:14px;
+    display:grid;
+    grid-template-columns:76px minmax(0,1fr) 208px;
+    grid-template-rows:auto auto;
+    column-gap:16px;row-gap:8px;align-items:start;
+    transition:border-color .18s,background-color .5s;
+  }
+  .row > .thumb      {grid-column:1;grid-row:1 / span 2;}
+  .row > .r-name     {grid-column:2;grid-row:1;align-self:center;}
+  .row > .price-field{grid-column:3;grid-row:1;align-self:center;}
+  .row > .r-meta     {grid-column:2;grid-row:2;}
+  .row > .r-side     {grid-column:3;grid-row:2;}
+  .row:focus-within{border-color:var(--gold);}
+  .row.flash{background:var(--gold-wash);}
+
+  /* Bild */
+  .thumb{
+    width:76px;height:76px;border-radius:12px;overflow:hidden;
+    background:var(--gold-wash);border:1px solid var(--line);
+    display:flex;align-items:center;justify-content:center;position:relative;
+  }
+  .thumb img{width:100%;height:100%;object-fit:cover;display:block;}
+  .thumb .ph{font-size:1.5rem;color:#b9ad95;font-weight:300;}
+  .thumb-btn{position:absolute;inset:0;}
+  .thumb-pick{position:absolute;inset:0;cursor:pointer;}
+  .thumb-pick input{display:none;}
+  /* Bild entfernen: kleines Zeichen auf dem Vorschaubild statt eigener Knopf */
+  .thumb-off{
+    position:absolute;top:2px;right:2px;
+    width:24px;height:24px;border-radius:7px;
+    background:rgba(255,255,255,.92);color:var(--warn);
+    font-size:.8rem;line-height:1;
     display:flex;align-items:center;justify-content:center;
-    z-index:100;padding:20px;
+    box-shadow:0 1px 3px rgba(0,0,0,.2);
   }
-  .lightbox img{max-width:100%;max-height:90vh;border-radius:10px;box-shadow:0 10px 40px rgba(0,0,0,.5);}
-  .lightbox .close-lb{
-    position:absolute;top:16px;right:20px;
-    font-size:2rem;color:#fff;background:transparent;border:none;
+  .thumb-off:hover{background:var(--warn);color:#fff;}
+
+  /* Textfelder */
+  .f{
+    width:100%;background:transparent;border:1.5px solid transparent;
+    border-radius:9px;padding:7px 9px;
+  }
+  .f:hover{border-color:var(--line);}
+  .f:focus{outline:none;background:#fff;border-color:var(--gold);}
+  .f-name{font-size:1.16rem;font-weight:600;}
+  .f-name::placeholder{font-weight:400;}
+  .r-meta{display:flex;gap:8px;flex-wrap:wrap;min-width:0;}
+  /* min-width:0 — sonst hält jedes Eingabefeld seine Eigenbreite
+     von rund 20 Zeichen und Notiz/Dauer brechen unnötig um. */
+  .r-meta .f{flex:1 1 140px;width:auto;min-width:0;font-size:.94rem;color:var(--ink-soft);}
+  .f-note:focus,.f-time:focus{color:var(--ink);}
+  .r-cat{flex:1 1 100%;font-size:.76rem;color:var(--ink-soft);padding:0 9px;}
+  ::placeholder{color:#b3aa99;}
+
+  /* Preisspalte */
+  .r-side{display:flex;flex-direction:column;align-items:flex-end;gap:4px;}
+  .price-field{position:relative;width:100%;}
+  .price-field .f-price{
+    width:100%;text-align:right;
+    padding:6px 34px 6px 9px;
+    font-size:1.7rem;font-weight:600;line-height:1.2;
+    letter-spacing:-.01em;font-variant-numeric:tabular-nums;
+  }
+  .price-field .cur{
+    position:absolute;right:10px;top:50%;transform:translateY(-50%);
+    font-size:1.25rem;color:var(--ink-soft);pointer-events:none;
+  }
+  .stamp{font-size:.76rem;color:var(--ink-soft);text-align:right;padding-right:2px;}
+  .stamp.old{color:var(--warn);font-weight:600;}
+  .rowtools{display:flex;gap:2px;justify-content:flex-end;margin-top:2px;}
+  .tool{
+    width:40px;height:40px;border-radius:9px;
+    display:flex;align-items:center;justify-content:center;
+    font-size:.95rem;color:var(--ink-soft);
+  }
+  .tool:hover{background:var(--gold-wash);color:var(--gold-deep);}
+  .tool.show{width:auto;padding:0 15px;font-size:.85rem;font-weight:600;color:var(--gold-deep);background:var(--gold-wash);}
+  .tool.show:hover{background:var(--gold);color:#fff;}
+  /* Wörter statt Zeichen — am Tresen soll nichts gedeutet werden müssen */
+  .tool.word{width:auto;padding:0 10px;font-size:.8rem;}
+  .tool.word[data-del]:hover{background:#f6e7e2;color:var(--warn);}
+  .confirm{
+    display:flex;gap:8px;align-items:center;justify-content:flex-end;
+    flex-wrap:wrap;font-size:.85rem;color:var(--warn);
+  }
+  .confirm button{padding:8px 12px;border-radius:8px;font-size:.85rem;font-weight:600;}
+  .confirm .yes{background:var(--warn);color:#fff;}
+  .confirm .no{background:var(--line);color:var(--ink);}
+
+  .row-add{
+    width:100%;min-height:var(--tap);margin-top:14px;
+    border:2px dashed var(--line-firm);border-radius:var(--r);
+    color:var(--gold-deep);font-size:1.04rem;font-weight:600;
+  }
+  .row-add:hover{background:var(--gold-wash);border-color:var(--gold);}
+
+  /* ---------- Kategorie-Ansicht ---------- */
+  .cathead{display:flex;align-items:center;gap:6px;margin-bottom:18px;}
+  .cathead h2{margin:0;font-size:1.35rem;font-weight:600;flex:1;min-width:0;}
+  .back{width:var(--tap);height:var(--tap);border-radius:12px;font-size:1.3rem;color:var(--gold-deep);flex-shrink:0;}
+  .back:hover{background:var(--gold-wash);}
+
+  .blank{text-align:center;color:var(--ink-soft);padding:34px 16px;font-size:.98rem;}
+
+  /* ---------- Kundenansicht ---------- */
+  .stage{
+    position:fixed;inset:0;z-index:80;background:var(--bg);
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    padding:32px 24px;text-align:center;overflow:auto;
+  }
+  .stage img{
+    max-width:min(340px,70vw);max-height:34vh;
+    border-radius:14px;margin-bottom:26px;object-fit:contain;
+  }
+  .stage .s-name{
+    font-size:clamp(1.5rem,4.5vw,2.3rem);font-weight:600;
+    line-height:1.2;max-width:16ch;margin-bottom:18px;
+  }
+  .stage .s-price{
+    font-size:clamp(3.6rem,15vw,7rem);font-weight:600;
+    line-height:1;letter-spacing:-.02em;color:var(--gold-deep);
+    font-variant-numeric:tabular-nums;
+  }
+  .stage .s-note{
+    margin-top:20px;font-size:clamp(1rem,2.6vw,1.25rem);color:var(--ink-soft);max-width:22ch;
+  }
+  .stage .s-time{margin-top:8px;font-size:.98rem;color:var(--ink-soft);}
+  .stage .s-close{
+    position:absolute;top:18px;right:18px;
+    width:var(--tap);height:var(--tap);border-radius:12px;
+    font-size:1.5rem;color:var(--ink-soft);
+  }
+  .stage .s-close:hover{background:var(--gold-wash);}
+  .stage .s-hint{position:absolute;bottom:20px;font-size:.78rem;color:#bdb4a2;}
+
+  /* ---------- Bild groß ---------- */
+  .lightbox{
+    position:fixed;inset:0;z-index:90;background:rgba(28,23,16,.88);
+    display:flex;align-items:center;justify-content:center;padding:24px;
+  }
+  .lightbox img{max-width:100%;max-height:88vh;border-radius:12px;}
+  .lightbox button{
+    position:absolute;top:18px;right:20px;
+    width:var(--tap);height:var(--tap);border-radius:12px;
+    font-size:1.6rem;color:#fff;
   }
 
-  /* top bar */
-  .topbar{display:flex;justify-content:flex-end;gap:8px;margin-bottom:6px;}
-
-  /* export/import panel */
-  .io-panel{
-    background:var(--bg-card);
-    border:1.5px solid var(--border);
-    border-radius:var(--radius);
-    padding:16px;
-    margin-top:24px;
+  /* ---------- Daten ---------- */
+  .data{
+    margin-top:34px;padding:20px;
+    background:var(--paper);border:1.5px solid var(--line);border-radius:var(--r);
   }
-  .io-panel h3{margin-top:0;font-size:1rem;color:var(--text-dim);text-transform:uppercase;letter-spacing:.06em;}
-  .io-row{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px;}
+  .data h2{margin:0 0 14px;font-size:.8rem;font-weight:700;letter-spacing:.11em;text-transform:uppercase;color:var(--ink-soft);}
+  .data-row{display:flex;gap:10px;flex-wrap:wrap;}
+  .data-note{margin-top:14px;font-size:.83rem;color:var(--ink-soft);line-height:1.5;}
+  .data-note b{color:var(--ink);font-weight:600;}
 
-  .empty-msg{color:var(--text-dim);text-align:center;padding:30px 10px;}
-  .confirm-inline{display:flex;gap:8px;align-items:center;margin-top:6px;}
-
-  @media (max-width:480px){
+  @media (max-width:720px){
     body{font-size:17px;}
-    .entry-row{grid-template-columns:52px 1fr;}
-    .entry-thumb-wrap{width:52px;height:52px;}
-    .entry-actions{grid-column:1 / -1;flex-direction:row;justify-content:flex-end;}
+    /* Schmal: Bezeichnung neben dem Bild über die volle Breite,
+       darunter der Preis in ganzer Zeile, dann Notiz/Dauer, dann Datum + Knöpfe.
+       Keine "auto"-Spalte für den Preis — ein Eingabefeld zieht sonst seine
+       Eigenbreite von rund 20 Zeichen und drückt die Bezeichnung weg. */
+    .row{
+      grid-template-columns:56px minmax(0,1fr);
+      grid-template-rows:auto auto auto auto;
+      column-gap:10px;row-gap:6px;
+    }
+    .row > .thumb      {grid-column:1;grid-row:1 / span 2;}
+    .row > .r-name     {grid-column:2;grid-row:1;align-self:center;}
+    .row > .price-field{grid-column:2;grid-row:2;align-self:center;}
+    .row > .r-meta     {grid-column:1 / -1;grid-row:3;}
+    .row > .r-side     {grid-column:1 / -1;grid-row:4;align-items:stretch;}
+    .thumb{width:56px;height:56px;}
+    .price-field .f-price{font-size:1.8rem;}
+    .stamp{text-align:left;}
+    .rowtools{justify-content:flex-start;}
+    .confirm{justify-content:flex-start;}
   }
 </style>
 </head>
 <body>
+
 <div class="wrap">
-  <h1>Goldschmiede Preisliste</h1>
-
-  <div class="search-box">
-    <input type="text" id="search" placeholder="Suchen… (z.B. Ring, Kette, Loeten)" autocomplete="off">
-    <div class="search-results" id="searchResults"></div>
+  <div class="masthead">
+    <h1>Preisliste</h1>
+    <p>Nachschlagen &middot; anpassen &middot; zeigen</p>
   </div>
 
-  <div id="app"></div>
-
-  <div class="io-panel">
-    <h3>Daten</h3>
-    <div class="io-row">
-      <button class="btn secondary" id="exportBtn">Export (JSON)</button>
-      <button class="btn secondary" id="importBtn">Import (JSON)</button>
-      <input type="file" id="importFile" accept="application/json" style="display:none">
+  <div class="searchbar">
+    <div class="searchbar-inner">
+      <input type="text" id="search" placeholder="Suchen &ndash; Bezeichnung, Notiz, Kategorie" autocomplete="off" spellcheck="false">
+      <button class="search-clear" id="searchClear" tabindex="-1" title="Suche leeren">&times;</button>
     </div>
-    <div id="ioMsg" style="margin-top:8px;color:var(--text-dim);font-size:.9rem;"></div>
   </div>
+
+  <main id="app"></main>
+
+  <section class="data">
+    <h2>Daten sichern</h2>
+    <div class="data-row">
+      <button class="btn ghost" id="exportBtn">Export als JSON</button>
+      <button class="btn ghost" id="importBtn">Import aus JSON</button>
+      <input type="file" id="importFile" accept="application/json,.json" hidden>
+    </div>
+    <div class="data-note" id="dataNote"></div>
+  </section>
 </div>
 
 <script>
 (function(){
 "use strict";
 
-const STORAGE_KEY = "goldschmiede_preisliste_v1";
-const MAX_IMG_DIM = 480;
-const IMG_QUALITY = 0.72;
-const MAX_RECENT = 8;
+/* ============================================================
+   Speicher
+   ============================================================ */
+const KEY = "goldschmiede_preisliste_v1";
+const IMG_MAX = 520;          // längste Kante nach dem Verkleinern
+const IMG_Q = 0.72;           // JPEG-Qualität
+const RECENT_MAX = 6;
+const OLD_DAYS = 180;         // ab hier Hinweis: Goldpreis prüfen?
 
-function uid(){
-  return 'id-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2,9);
-}
+const uid = () => "id-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 9);
 
-function defaultData(){
+function freshData(){
   return {
-    categories: [
-      { id: uid(), name: "Loeten" },
-      { id: uid(), name: "Reparatur" },
-      { id: uid(), name: "Anfertigung" },
-      { id: uid(), name: "Umarbeitung" }
-    ],
+    categories: ["Löten","Reparatur","Anfertigung","Umarbeitung"].map(n => ({ id: uid(), name: n })),
     entries: [],
     recent: []
   };
 }
 
-function load(){
+function loadData(){
   try{
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if(!raw) return defaultData();
-    const parsed = JSON.parse(raw);
-    if(!parsed.categories || !parsed.entries) return defaultData();
-    if(!parsed.recent) parsed.recent = [];
-    return parsed;
-  }catch(e){
-    console.error("Laden fehlgeschlagen", e);
-    return defaultData();
+    const raw = localStorage.getItem(KEY);
+    if(!raw) return freshData();
+    const d = JSON.parse(raw);
+    if(!Array.isArray(d.categories) || !Array.isArray(d.entries)) return freshData();
+    if(!Array.isArray(d.recent)) d.recent = [];
+    return d;
+  }catch(err){
+    console.error("Daten konnten nicht gelesen werden:", err);
+    return freshData();
   }
 }
 
-let data = load();
-let saveTimer = null;
+let data = loadData();
+
+let writeTimer = null;
 function save(){
-  clearTimeout(saveTimer);
-  saveTimer = setTimeout(()=>{
-    try{
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-    }catch(e){
-      alert("Speichern fehlgeschlagen (Speicher evtl. voll): " + e.message);
-    }
-  }, 120);
+  clearTimeout(writeTimer);
+  writeTimer = setTimeout(writeThrough, 150);
 }
-
-function saveNow(){
-  clearTimeout(saveTimer);
+function writeThrough(){
+  clearTimeout(writeTimer);
   try{
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-  }catch(e){
-    alert("Speichern fehlgeschlagen (Speicher evtl. voll): " + e.message);
+    localStorage.setItem(KEY, JSON.stringify(data));
+    showStorage();
+  }catch(err){
+    showStorage("Speichern fehlgeschlagen — der Speicher ist voll. " +
+      "Bitte exportieren und einzelne Bilder entfernen.");
   }
 }
 
-// ---- routing state ----
-let view = { screen: "home", categoryId: null };
+/* ============================================================
+   Kleine Helfer
+   ============================================================ */
 
-// ---- helpers ----
-function parsePrice(str){
-  if(str === null || str === undefined) return null;
-  let s = String(str).trim();
-  if(s === "") return null;
-  s = s.replace(/[^\d.,\-]/g,"");
-  // if both , and . present, assume . is thousands sep, , is decimal (de-style) OR vice versa
-  if(s.indexOf(",") !== -1 && s.indexOf(".") !== -1){
-    if(s.lastIndexOf(",") > s.lastIndexOf(".")){
-      s = s.replace(/\./g,"").replace(",", ".");
-    } else {
-      s = s.replace(/,/g,"");
-    }
-  } else if(s.indexOf(",") !== -1){
+// Komma und Punkt gleichermaßen als Dezimaltrenner
+function toNumber(input){
+  if(input == null) return null;
+  let s = String(input).trim().replace(/[^\d.,-]/g, "");
+  if(!s) return null;
+  const hasComma = s.includes(","), hasDot = s.includes(".");
+  if(hasComma && hasDot){
+    // der hintere Trenner ist der Dezimaltrenner
+    s = s.lastIndexOf(",") > s.lastIndexOf(".")
+      ? s.replace(/\./g, "").replace(",", ".")
+      : s.replace(/,/g, "");
+  }else if(hasComma){
     s = s.replace(",", ".");
+  }else if(hasDot && /\.\d{3}\b/.test(s) && !/\.\d{1,2}$/.test(s)){
+    s = s.replace(/\./g, "");   // 1.250 → 1250
   }
   const n = parseFloat(s);
-  return isNaN(n) ? null : n;
+  return Number.isFinite(n) ? n : null;
 }
 
-function formatPrice(n){
-  if(n === null || n === undefined || isNaN(n)) return "";
-  return n.toLocaleString("de-DE", {minimumFractionDigits:2, maximumFractionDigits:2});
+const money = n => (n == null || !Number.isFinite(n))
+  ? "" : n.toLocaleString("de-DE", { minimumFractionDigits:2, maximumFractionDigits:2 });
+
+function dateShort(iso){
+  const d = iso ? new Date(iso) : null;
+  return (d && !isNaN(d)) ? d.toLocaleDateString("de-DE",{day:"2-digit",month:"2-digit",year:"numeric"}) : "";
+}
+function ageInDays(iso){
+  const d = iso ? new Date(iso) : null;
+  return (d && !isNaN(d)) ? (Date.now() - d.getTime()) / 864e5 : Infinity;
 }
 
-function formatDate(iso){
-  if(!iso) return "";
-  const d = new Date(iso);
-  if(isNaN(d.getTime())) return "";
-  return d.toLocaleDateString("de-DE", {day:"2-digit", month:"2-digit", year:"numeric"});
-}
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c =>
+  ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
 
-function daysSince(iso){
-  if(!iso) return Infinity;
-  const d = new Date(iso);
-  if(isNaN(d.getTime())) return Infinity;
-  return (Date.now() - d.getTime()) / 86400000;
-}
+const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
 
-const STALE_DAYS = 180; // ~6 Monate -> Hinweis, Goldpreis pruefen
+const catById   = id => data.categories.find(c => c.id === id);
+const entryById = id => data.entries.find(e => e.id === id);
+const entriesOf = id => data.entries.filter(e => e.categoryId === id);
 
-function escapeHtml(s){
-  return String(s == null ? "" : s).replace(/[&<>"']/g, c => ({
-    "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
-  }[c]));
-}
-
-function getCategory(id){
-  return data.categories.find(c => c.id === id);
-}
-function entriesForCategory(id){
-  return data.entries.filter(e => e.categoryId === id);
-}
-
-function touchRecent(entryId){
-  data.recent = data.recent.filter(id => id !== entryId);
-  data.recent.unshift(entryId);
-  data.recent = data.recent.slice(0, MAX_RECENT);
+function markUsed(id){
+  if(!entryById(id)) return;
+  data.recent = [id, ...data.recent.filter(r => r !== id)].slice(0, RECENT_MAX);
   save();
 }
 
-// ---- image handling ----
-function resizeImageFile(file, cb){
+/* ============================================================
+   Bilder — lokal verkleinern, nichts verlässt das Gerät
+   ============================================================ */
+function shrinkImage(file, done){
   const reader = new FileReader();
-  reader.onload = function(e){
+  reader.onerror = () => alert("Die Datei konnte nicht gelesen werden.");
+  reader.onload = ev => {
     const img = new Image();
-    img.onload = function(){
-      let w = img.width, h = img.height;
-      if(w > h){
-        if(w > MAX_IMG_DIM){ h = Math.round(h * MAX_IMG_DIM / w); w = MAX_IMG_DIM; }
-      } else {
-        if(h > MAX_IMG_DIM){ w = Math.round(w * MAX_IMG_DIM / h); h = MAX_IMG_DIM; }
-      }
-      const canvas = document.createElement("canvas");
-      canvas.width = w; canvas.height = h;
-      const ctx = canvas.getContext("2d");
+    img.onerror = () => alert("Das Bild konnte nicht geladen werden.");
+    img.onload = () => {
+      let { width:w, height:h } = img;
+      const scale = Math.min(1, IMG_MAX / Math.max(w, h));
+      w = Math.round(w * scale); h = Math.round(h * scale);
+      const cv = document.createElement("canvas");
+      cv.width = w; cv.height = h;
+      const ctx = cv.getContext("2d");
+      ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, w, h);   // Transparenz → weiß
       ctx.drawImage(img, 0, 0, w, h);
-      const dataUrl = canvas.toDataURL("image/jpeg", IMG_QUALITY);
-      cb(dataUrl);
+      done(cv.toDataURL("image/jpeg", IMG_Q));
     };
-    img.onerror = function(){ alert("Bild konnte nicht geladen werden."); };
-    img.src = e.target.result;
+    img.src = ev.target.result;
   };
-  reader.onerror = function(){ alert("Datei konnte nicht gelesen werden."); };
   reader.readAsDataURL(file);
 }
 
-// ---- rendering ----
+/* ============================================================
+   Ansichtszustand
+   ============================================================ */
+let view = { screen:"home", categoryId:null };
+let editingCat = null;     // Kategorie-ID, die gerade umbenannt wird
+let query = "";
+
 const app = document.getElementById("app");
 
-function render(){
-  if(view.screen === "home") renderHome();
-  else if(view.screen === "category") renderCategory(view.categoryId);
+/* ============================================================
+   Zeilen-Markup
+   ============================================================ */
+function rowHTML(e, opts){
+  opts = opts || {};
+  const cat = catById(e.categoryId);
+  const old = ageInDays(e.priceDate) > OLD_DAYS;
+  const stamp = e.priceDate
+    ? `<div class="stamp ${old ? "old" : ""}">Preis vom ${dateShort(e.priceDate)}${old ? " &middot; prüfen?" : ""}</div>`
+    : `<div class="stamp">noch kein Preis eingetragen</div>`;
+
+  // DOM-Reihenfolge = Tab-Reihenfolge: Bezeichnung, Preis, Notiz, Dauer.
+  // Die Grid-Plätze in der CSS sorgen für die Optik, alle Knöpfe stehen auf tabindex="-1".
+  return `
+  <div class="row" data-row="${e.id}">
+    <div class="thumb" data-thumb="${e.id}">
+      ${e.image
+        ? `<img src="${e.image}" alt="">
+           <button class="thumb-btn" data-big="${e.id}" tabindex="-1" title="Bild groß zeigen"></button>
+           <button class="thumb-off" data-unimg="${e.id}" tabindex="-1" title="Bild entfernen">&#10005;</button>`
+        : `<span class="ph">+</span>
+           <label class="thumb-pick" title="Bild hinzufügen">
+             <input type="file" accept="image/*" data-pick="${e.id}" tabindex="-1">
+           </label>`}
+    </div>
+
+    <div class="r-name">
+      <input class="f f-name" data-f="name" data-id="${e.id}" value="${esc(e.name)}" placeholder="Bezeichnung">
+    </div>
+
+    <div class="price-field">
+      <input class="f f-price" data-f="price" data-id="${e.id}" inputmode="decimal"
+             value="${e.price != null ? money(e.price) : ""}" placeholder="—">
+      <span class="cur">&euro;</span>
+    </div>
+
+    <div class="r-meta">
+      <input class="f f-note" data-f="note" data-id="${e.id}" value="${esc(e.note)}" placeholder="Notiz">
+      <input class="f f-time" data-f="time" data-id="${e.id}" value="${esc(e.time)}" placeholder="Dauer">
+      ${opts.showCategory && cat ? `<div class="r-cat">${esc(cat.name)}</div>` : ""}
+    </div>
+
+    <div class="r-side">
+      ${stamp}
+      <div class="rowtools" data-tools="${e.id}">
+        <button class="tool show" data-stage="${e.id}" tabindex="-1" title="Der Kundin zeigen">zeigen</button>
+        <button class="tool word" data-copy="${e.id}" tabindex="-1" title="Zeile als Vorlage verdoppeln">Kopie</button>
+        <button class="tool word" data-del="${e.id}" tabindex="-1" title="Zeile löschen">löschen</button>
+      </div>
+    </div>
+  </div>`;
 }
 
+/* ============================================================
+   Startseite
+   ============================================================ */
 function renderHome(){
-  const recentEntries = data.recent
-    .map(id => data.entries.find(e => e.id === id))
-    .filter(Boolean);
-
+  const recent = data.recent.map(entryById).filter(Boolean);
   let html = "";
 
-  if(recentEntries.length){
-    html += `<div class="section">
-      <div class="section-title">Zuletzt benutzt</div>
-      <div class="entries recent-list">
-        ${recentEntries.map(e => entryRowHtml(e)).join("")}
-      </div>
-    </div>`;
+  if(recent.length){
+    html += `<section class="section">
+      <div class="section-head"><h2>Zuletzt benutzt</h2></div>
+      <div class="rows">${recent.map(e => rowHTML(e, { showCategory:true })).join("")}</div>
+    </section>`;
   }
 
-  html += `<div class="section">
-    <div class="section-title">Kategorien</div>
-    <div class="cat-grid" id="catGrid">
-      ${data.categories.map(c => `
-        <div class="cat-tile-wrap">
-          <div class="cat-tile" data-cat="${c.id}">
-            ${escapeHtml(c.name)}
-            <span class="cat-count">${entriesForCategory(c.id).length} Eintraege</span>
-          </div>
-          <button class="cat-tile-edit" data-editcat="${c.id}" title="Kategorie umbenennen/loeschen">&#9998;</button>
-        </div>
-      `).join("")}
+  html += `<section class="section">
+    <div class="section-head">
+      <h2>Kategorien</h2>
+      <span class="count">${plural(data.entries.length, "Eintrag", "Einträge")} insgesamt</span>
     </div>
-    <div class="add-cat-row">
-      <input type="text" id="newCatName" placeholder="Neue Kategorie…">
-      <button class="btn" id="addCatBtn">+ Kategorie</button>
+    <div class="cats">${data.categories.map(catHTML).join("")}</div>
+    <div class="cat-add">
+      <input type="text" id="newCat" placeholder="Neue Kategorie&hellip;">
+      <button class="btn" id="addCat">Anlegen</button>
     </div>
-  </div>`;
+  </section>`;
 
   app.innerHTML = html;
-  bindHomeEvents();
+  wireHome();
+  wireRows();
 }
 
-function renderCategory(catId){
-  const cat = getCategory(catId);
-  if(!cat){ view = {screen:"home", categoryId:null}; return render(); }
-  const entries = entriesForCategory(catId);
-
-  let html = `<div class="cat-header">
-      <button class="icon-btn back-btn" id="backBtn" title="Zurueck">&#8592;</button>
-      <h2>${escapeHtml(cat.name)}</h2>
-    </div>`;
-
-  html += `<div class="entries" id="entryList">`;
-  if(entries.length === 0){
-    html += `<div class="empty-msg">Noch keine Eintraege. Mit dem Plus-Knopf unten hinzufuegen.</div>`;
-  } else {
-    html += entries.map(e => entryRowHtml(e)).join("");
-  }
-  html += `</div>`;
-
-  html += `<button class="add-entry-btn" id="addEntryBtn">+ Neue Zeile</button>`;
-
-  app.innerHTML = html;
-  bindCategoryEvents(catId);
-}
-
-function entryRowHtml(e){
-  const cat = getCategory(e.categoryId);
-  const stale = daysSince(e.priceDate) > STALE_DAYS;
+function catHTML(c){
+  const n = entriesOf(c.id).length;
   return `
-  <div class="entry-row" data-entry="${e.id}">
-    <div class="entry-thumb-wrap" data-thumb="${e.id}">
-      ${e.image ? `<img src="${e.image}" alt="">` : `<span class="no-img">&#128247;</span>`}
-    </div>
-    <div class="entry-fields">
-      <input type="text" class="field field-name" data-field="name" data-entry="${e.id}" value="${escapeHtml(e.name)}" placeholder="Bezeichnung" tabindex="0">
-      <div class="row-line2">
-        <div class="price-wrap">
-          <input type="text" inputmode="decimal" class="field field-price" data-field="price" data-entry="${e.id}" value="${e.price != null ? formatPrice(e.price) : ""}" placeholder="Preis" tabindex="0">
-          <span class="eur">&euro;</span>
-        </div>
-        <input type="text" class="field field-time" data-field="time" data-entry="${e.id}" value="${escapeHtml(e.time||"")}" placeholder="Dauer (z.B. 20 Min.)" tabindex="0">
+  <div class="cat ${editingCat === c.id ? "editing" : ""}" data-cat="${c.id}">
+    <button class="cat-open" data-open="${c.id}">
+      <span class="cat-name">${esc(c.name)}</span>
+      <span class="cat-sub">${n === 0 ? "noch leer" : n === 1 ? "1 Eintrag" : n + " Einträge"}</span>
+    </button>
+    <button class="cat-edit" data-editcat="${c.id}" tabindex="-1" title="Umbenennen oder löschen">&#9998;</button>
+    <div class="cat-editor">
+      <input type="text" data-catname="${c.id}" value="${esc(c.name)}" placeholder="Name der Kategorie">
+      <div class="cat-editor-row">
+        <button class="btn" data-savecat="${c.id}">Sichern</button>
+        <button class="btn ghost" data-cancelcat="1">Zurück</button>
+        <button class="btn warn" data-delcat="${c.id}">Löschen</button>
       </div>
-      <input type="text" class="field field-note" data-field="note" data-entry="${e.id}" value="${escapeHtml(e.note||"")}" placeholder="Notiz (z.B. plus Material)" tabindex="0">
-      <div class="meta-line">
-        ${e.priceDate ? `<span class="${stale ? 'stale':''}">Preis vom ${formatDate(e.priceDate)}${stale ? ' – pruefen?' : ''}</span>` : `<span>Noch kein Preisdatum</span>`}
-        ${!(view.screen==='category') && cat ? `<span>${escapeHtml(cat.name)}</span>` : ""}
-      </div>
-    </div>
-    <div class="entry-actions">
-      <label class="icon-btn" title="Bild hinzufuegen/ersetzen" style="cursor:pointer;">
-        &#128248;
-        <input type="file" accept="image/*" capture="environment" style="display:none" data-imgfor="${e.id}">
-      </label>
-      <button class="icon-btn" data-delentry="${e.id}" title="Zeile loeschen">&#128465;</button>
     </div>
   </div>`;
 }
 
-// ---- events: home ----
-function bindHomeEvents(){
-  app.querySelectorAll("[data-cat]").forEach(el => {
-    el.addEventListener("click", () => {
-      view = { screen:"category", categoryId: el.getAttribute("data-cat") };
-      render();
-      window.scrollTo(0,0);
-    });
-  });
-  app.querySelectorAll("[data-editcat]").forEach(el => {
-    el.addEventListener("click", (ev) => {
-      ev.stopPropagation();
-      editCategory(el.getAttribute("data-editcat"));
-    });
-  });
-  document.getElementById("addCatBtn").addEventListener("click", addCategory);
-  document.getElementById("newCatName").addEventListener("keydown", (ev) => {
-    if(ev.key === "Enter") addCategory();
+function wireHome(){
+  app.querySelectorAll("[data-open]").forEach(b => b.onclick = () => {
+    view = { screen:"category", categoryId:b.dataset.open };
+    editingCat = null;
+    render(); scrollTop();
   });
 
-  bindEntryRowEvents();
-}
-
-function addCategory(){
-  const input = document.getElementById("newCatName");
-  const name = input.value.trim();
-  if(!name) return;
-  data.categories.push({ id: uid(), name });
-  save();
-  render();
-}
-
-function editCategory(catId){
-  const cat = getCategory(catId);
-  if(!cat) return;
-  const newName = prompt("Kategorie umbenennen:", cat.name);
-  if(newName === null) return;
-  const trimmed = newName.trim();
-  if(trimmed === ""){
-    const count = entriesForCategory(catId).length;
-    if(confirm(`Kategorie "${cat.name}" wirklich loeschen?` + (count ? ` ${count} Eintraege werden ebenfalls geloescht.` : ""))){
-      data.categories = data.categories.filter(c => c.id !== catId);
-      data.entries = data.entries.filter(e => e.categoryId !== catId);
-      data.recent = data.recent.filter(id => data.entries.some(e => e.id === id));
-      save();
-      render();
-    }
-    return;
-  }
-  cat.name = trimmed;
-  save();
-  render();
-}
-
-// ---- events: category ----
-function bindCategoryEvents(catId){
-  document.getElementById("backBtn").addEventListener("click", () => {
-    view = { screen:"home", categoryId:null };
+  app.querySelectorAll("[data-editcat]").forEach(b => b.onclick = () => {
+    editingCat = b.dataset.editcat;
     render();
-    window.scrollTo(0,0);
+    const f = app.querySelector(`[data-catname="${editingCat}"]`);
+    if(f){ f.focus(); f.select(); }
   });
-  document.getElementById("addEntryBtn").addEventListener("click", () => {
-    const e = {
-      id: uid(),
-      categoryId: catId,
-      name: "",
-      price: null,
-      priceDate: null,
-      note: "",
-      time: "",
-      image: null
+
+  app.querySelectorAll("[data-cancelcat]").forEach(b => b.onclick = () => {
+    editingCat = null; render();
+  });
+
+  app.querySelectorAll("[data-savecat]").forEach(b => b.onclick = () => saveCat(b.dataset.savecat));
+  app.querySelectorAll("[data-catname]").forEach(f => {
+    f.onkeydown = ev => {
+      if(ev.key === "Enter") saveCat(f.dataset.catname);
+      if(ev.key === "Escape"){ editingCat = null; render(); }
     };
-    data.entries.push(e);
-    save();
-    render();
-    const nameInput = app.querySelector(`input[data-field="name"][data-entry="${e.id}"]`);
-    if(nameInput) nameInput.focus();
   });
-  bindEntryRowEvents();
+
+  app.querySelectorAll("[data-delcat]").forEach(b => b.onclick = () => {
+    const id = b.dataset.delcat, cat = catById(id), n = entriesOf(id).length;
+    const box = b.closest(".cat-editor-row");
+    box.innerHTML = `<div class="confirm">
+        <span>„${esc(cat.name)}“${n ? ` mit ${n} ${n === 1 ? "Eintrag" : "Einträgen"}` : ""} löschen?</span>
+        <button class="yes">Ja, löschen</button><button class="no">Abbrechen</button>
+      </div>`;
+    box.querySelector(".no").onclick = () => render();
+    box.querySelector(".yes").onclick = () => {
+      data.categories = data.categories.filter(c => c.id !== id);
+      data.entries    = data.entries.filter(e => e.categoryId !== id);
+      data.recent     = data.recent.filter(r => entryById(r));
+      editingCat = null; save(); render();
+    };
+  });
+
+  const newCat = document.getElementById("newCat");
+  const add = () => {
+    const name = newCat.value.trim();
+    if(!name) return;
+    data.categories.push({ id: uid(), name });
+    save(); render();
+    const again = document.getElementById("newCat");
+    if(again) again.focus();
+  };
+  document.getElementById("addCat").onclick = add;
+  newCat.onkeydown = ev => { if(ev.key === "Enter") add(); };
 }
 
-// ---- shared entry-row events (works in both home recent list & category list) ----
-function bindEntryRowEvents(){
-  app.querySelectorAll("input[data-field]").forEach(inp => {
-    inp.addEventListener("change", onFieldChange);
-    inp.addEventListener("blur", onFieldChange);
-  });
-  app.querySelectorAll("[data-delentry]").forEach(btn => {
-    btn.addEventListener("click", () => deleteEntry(btn.getAttribute("data-delentry")));
-  });
-  app.querySelectorAll("[data-thumb]").forEach(el => {
-    el.addEventListener("click", () => {
-      const id = el.getAttribute("data-thumb");
-      const entry = data.entries.find(e => e.id === id);
-      if(entry && entry.image) openLightbox(entry.image);
+function saveCat(id){
+  const field = app.querySelector(`[data-catname="${id}"]`);
+  const name = field ? field.value.trim() : "";
+  const cat = catById(id);
+  if(cat && name) cat.name = name;
+  editingCat = null;
+  save(); render();
+}
+
+/* ============================================================
+   Kategorie-Ansicht
+   ============================================================ */
+function renderCategory(id){
+  const cat = catById(id);
+  if(!cat){ view = { screen:"home", categoryId:null }; return render(); }
+  const list = entriesOf(id);
+
+  app.innerHTML = `
+    <div class="cathead">
+      <button class="back" id="back" title="Zurück zur Übersicht">&#8592;</button>
+      <h2>${esc(cat.name)}</h2>
+    </div>
+    <div class="rows">${
+      list.length ? list.map(e => rowHTML(e)).join("")
+                  : `<div class="blank">Noch nichts eingetragen.<br>Unten eine Zeile hinzufügen.</div>`
+    }</div>
+    <button class="row-add" id="addRow">+ &nbsp;Zeile hinzufügen</button>`;
+
+  document.getElementById("back").onclick = () => {
+    view = { screen:"home", categoryId:null }; render(); scrollTop();
+  };
+  document.getElementById("addRow").onclick = () => {
+    const e = { id:uid(), categoryId:id, name:"", price:null, priceDate:null, note:"", time:"", image:null };
+    data.entries.push(e); save(); render();
+    const field = app.querySelector(`.f-name[data-id="${e.id}"]`);
+    if(field){ field.focus(); field.scrollIntoView({ block:"center", behavior:"smooth" }); }
+  };
+  wireRows();
+}
+
+/* ============================================================
+   Suche — Treffer sind gewöhnliche, editierbare Zeilen
+   ============================================================ */
+function renderSearch(){
+  const q = query.toLowerCase();
+  const direct = data.entries.filter(e =>
+    (e.name || "").toLowerCase().includes(q) ||
+    (e.note || "").toLowerCase().includes(q) ||
+    (e.time || "").toLowerCase().includes(q));
+  const byCat = data.categories
+    .filter(c => c.name.toLowerCase().includes(q))
+    .flatMap(c => entriesOf(c.id));
+
+  const seen = new Set(), hits = [];
+  [...direct, ...byCat].forEach(e => { if(!seen.has(e.id)){ seen.add(e.id); hits.push(e); } });
+
+  app.innerHTML = hits.length
+    ? `<section class="section">
+         <div class="section-head">
+           <h2>Treffer</h2>
+           <span class="count">${plural(hits.length, "Zeile", "Zeilen")}</span>
+         </div>
+         <div class="rows">${hits.map(e => rowHTML(e, { showCategory:true })).join("")}</div>
+       </section>`
+    : `<div class="blank">Nichts gefunden für „${esc(query)}“.</div>`;
+
+  wireRows();
+}
+
+/* ============================================================
+   Zeilen verdrahten
+   ============================================================ */
+function wireRows(){
+  // Textfelder: bei Verlassen bzw. Änderung sichern
+  app.querySelectorAll(".f").forEach(f => {
+    f.addEventListener("change", commitField);
+    f.addEventListener("blur", commitField);
+    f.addEventListener("focus", () => markUsed(f.dataset.id));
+    f.addEventListener("keydown", ev => {
+      if(ev.key === "Enter"){ ev.preventDefault(); f.blur(); }
+      if(ev.key === "Escape") f.blur();
     });
   });
-  app.querySelectorAll("input[data-imgfor]").forEach(inp => {
-    inp.addEventListener("change", (ev) => {
-      const id = inp.getAttribute("data-imgfor");
-      const file = ev.target.files[0];
-      if(!file) return;
-      resizeImageFile(file, (dataUrl) => {
-        const entry = data.entries.find(e => e.id === id);
-        if(!entry) return;
-        entry.image = dataUrl;
-        save();
-        render();
-      });
-    });
-  });
-}
 
-function onFieldChange(ev){
-  const inp = ev.target;
-  const field = inp.getAttribute("data-field");
-  const id = inp.getAttribute("data-entry");
-  const entry = data.entries.find(e => e.id === id);
-  if(!entry) return;
-
-  if(field === "name"){
-    entry.name = inp.value.trim();
-  } else if(field === "price"){
-    const val = inp.value.trim();
-    const parsed = parsePrice(val);
-    if(val === ""){
-      entry.price = null;
-      entry.priceDate = null;
-    } else if(parsed !== null && parsed !== entry.price){
-      entry.price = parsed;
-      entry.priceDate = new Date().toISOString();
-    } else if(parsed !== null){
-      entry.price = parsed;
-    }
-    inp.value = entry.price != null ? formatPrice(entry.price) : "";
-    // update the meta-line date display without a full re-render if possible
-  } else if(field === "note"){
-    entry.note = inp.value.trim();
-  } else if(field === "time"){
-    entry.time = inp.value.trim();
-  }
-  save();
-  // light refresh of just the meta line for price changes / date display
-  refreshEntryMeta(entry);
-}
-
-function refreshEntryMeta(entry){
-  app.querySelectorAll(`.entry-row[data-entry="${entry.id}"] .meta-line`).forEach(el => {
-    const stale = daysSince(entry.priceDate) > STALE_DAYS;
-    const cat = getCategory(entry.categoryId);
-    el.innerHTML = `
-      ${entry.priceDate ? `<span class="${stale ? 'stale':''}">Preis vom ${formatDate(entry.priceDate)}${stale ? ' – pruefen?' : ''}</span>` : `<span>Noch kein Preisdatum</span>`}
-      ${view.screen !== 'category' && cat ? `<span>${escapeHtml(cat.name)}</span>` : ""}
-    `;
-  });
-}
-
-function deleteEntry(id){
-  const entry = data.entries.find(e => e.id === id);
-  if(!entry) return;
-  if(!confirm(`"${entry.name || 'Eintrag ohne Namen'}" wirklich loeschen?`)) return;
-  data.entries = data.entries.filter(e => e.id !== id);
-  data.recent = data.recent.filter(rid => rid !== id);
-  save();
-  render();
-}
-
-// ---- lightbox ----
-function openLightbox(src){
-  const lb = document.createElement("div");
-  lb.className = "lightbox";
-  lb.innerHTML = `<button class="close-lb" aria-label="Schliessen">&times;</button><img src="${src}" alt="">`;
-  lb.addEventListener("click", (ev) => {
-    if(ev.target === lb || ev.target.classList.contains("close-lb")) lb.remove();
-  });
-  document.body.appendChild(lb);
-}
-
-// ---- search ----
-const searchInput = document.getElementById("search");
-const searchResults = document.getElementById("searchResults");
-
-searchInput.addEventListener("input", () => {
-  const q = searchInput.value.trim().toLowerCase();
-  if(q === ""){
-    searchResults.innerHTML = "";
-    searchResults.style.display = "none";
-    app.style.display = "";
-    return;
-  }
-  const hits = data.entries.filter(e => {
-    return (e.name && e.name.toLowerCase().includes(q)) ||
-           (e.note && e.note.toLowerCase().includes(q)) ||
-           (e.time && e.time.toLowerCase().includes(q));
-  }).concat(
-    // also allow matching by category name -> show all entries of that category
-    data.categories.filter(c => c.name.toLowerCase().includes(q))
-      .flatMap(c => entriesForCategory(c.id))
-  );
-  const uniqueHits = [];
-  const seen = new Set();
-  hits.forEach(h => { if(!seen.has(h.id)){ seen.add(h.id); uniqueHits.push(h); } });
-
-  app.style.display = "none";
-  searchResults.style.display = "";
-
-  if(uniqueHits.length === 0){
-    searchResults.innerHTML = `<div class="empty-msg">Keine Treffer.</div>`;
-    return;
-  }
-
-  searchResults.innerHTML = uniqueHits.map(e => {
-    const cat = getCategory(e.categoryId);
-    const stale = daysSince(e.priceDate) > STALE_DAYS;
-    return `<div class="search-hit" data-searchentry="${e.id}">
-      <div class="hit-cat">${cat ? escapeHtml(cat.name) : ""}</div>
-      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
-        <div>
-          <strong style="font-size:1.1rem;">${escapeHtml(e.name || "(ohne Namen)")}</strong>
-          ${e.note ? `<div style="color:var(--text-dim);font-size:.9rem;">${escapeHtml(e.note)}</div>` : ""}
-        </div>
-        <div style="text-align:right;">
-          <div style="font-size:1.2rem;font-weight:700;">${e.price != null ? formatPrice(e.price)+" €" : "–"}</div>
-          ${e.priceDate ? `<div class="${stale?'stale':''}" style="font-size:.8rem;">${formatDate(e.priceDate)}</div>` : ""}
-        </div>
-      </div>
-    </div>`;
-  }).join("");
-
-  searchResults.querySelectorAll("[data-searchentry]").forEach(el => {
-    el.addEventListener("click", () => {
-      const id = el.getAttribute("data-searchentry");
-      const entry = data.entries.find(x => x.id === id);
-      if(!entry) return;
-      touchRecent(id);
-      view = { screen:"category", categoryId: entry.categoryId };
-      searchInput.value = "";
-      searchResults.innerHTML = "";
-      searchResults.style.display = "none";
-      app.style.display = "";
-      render();
-      setTimeout(() => {
-        const row = app.querySelector(`.entry-row[data-entry="${id}"]`);
-        if(row){
-          row.scrollIntoView({behavior:"smooth", block:"center"});
-          row.style.transition = "background-color .3s";
-          row.style.backgroundColor = "var(--accent-bg)";
-          setTimeout(() => { row.style.backgroundColor = ""; }, 1200);
-        }
-      }, 50);
-    });
-  });
-});
-
-// ---- export / import ----
-document.getElementById("exportBtn").addEventListener("click", () => {
-  const blob = new Blob([JSON.stringify(data, null, 2)], {type:"application/json"});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  const stamp = new Date().toISOString().slice(0,10);
-  a.href = url;
-  a.download = `goldschmiede-preisliste-${stamp}.json`;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-  const msg = document.getElementById("ioMsg");
-  msg.textContent = "Export erstellt: " + a.download;
-});
-
-document.getElementById("importBtn").addEventListener("click", () => {
-  document.getElementById("importFile").click();
-});
-
-document.getElementById("importFile").addEventListener("change", (ev) => {
-  const file = ev.target.files[0];
-  if(!file) return;
-  const msg = document.getElementById("ioMsg");
-  const reader = new FileReader();
-  reader.onload = function(e){
-    try{
-      const imported = JSON.parse(e.target.result);
-      if(!imported.categories || !imported.entries){
-        throw new Error("Ungueltiges Format (categories/entries fehlen).");
-      }
-      const replace = confirm("Import: OK = alle aktuellen Daten ersetzen. Abbrechen = importierte Daten zu bestehenden hinzufuegen.");
-      if(replace){
-        data = {
-          categories: imported.categories,
-          entries: imported.entries,
-          recent: imported.recent || []
-        };
-      } else {
-        const catIdMap = {};
-        imported.categories.forEach(c => {
-          const existing = data.categories.find(ec => ec.name === c.name);
-          if(existing){
-            catIdMap[c.id] = existing.id;
-          } else {
-            const newId = uid();
-            catIdMap[c.id] = newId;
-            data.categories.push({ id: newId, name: c.name });
-          }
-        });
-        imported.entries.forEach(en => {
-          const newEntry = Object.assign({}, en, {
-            id: uid(),
-            categoryId: catIdMap[en.categoryId] || en.categoryId
-          });
-          data.entries.push(newEntry);
-        });
-      }
-      saveNow();
-      msg.textContent = "Import erfolgreich.";
-      view = { screen:"home", categoryId:null };
-      render();
-    }catch(err){
-      msg.textContent = "Import fehlgeschlagen: " + err.message;
-    }
+  // Bild wählen
+  app.querySelectorAll("[data-pick]").forEach(inp => inp.addEventListener("change", ev => {
+    const file = ev.target.files && ev.target.files[0];
     ev.target.value = "";
+    if(!file) return;
+    shrinkImage(file, url => {
+      const e = entryById(inp.dataset.pick);
+      if(!e) return;
+      e.image = url; save(); render();
+    });
+  }));
+
+  app.querySelectorAll("[data-unimg]").forEach(b => b.onclick = () => {
+    const e = entryById(b.dataset.unimg);
+    if(!e) return;
+    e.image = null; save(); render();
+  });
+
+  app.querySelectorAll("[data-big]").forEach(b => b.onclick = () => {
+    const e = entryById(b.dataset.big);
+    if(e && e.image){ markUsed(e.id); openLightbox(e.image); }
+  });
+
+  app.querySelectorAll("[data-stage]").forEach(b => b.onclick = () => openStage(b.dataset.stage));
+
+  app.querySelectorAll("[data-copy]").forEach(b => b.onclick = () => {
+    const e = entryById(b.dataset.copy);
+    if(!e) return;
+    const copy = Object.assign({}, e, { id: uid(), name: e.name ? e.name + " (Kopie)" : "" });
+    data.entries.splice(data.entries.indexOf(e) + 1, 0, copy);
+    save(); render();
+    const field = app.querySelector(`.f-name[data-id="${copy.id}"]`);
+    if(field){ field.focus(); field.select(); }
+  });
+
+  // Löschen mit Rückfrage direkt in der Zeile — kein extra Fenster
+  app.querySelectorAll("[data-del]").forEach(b => b.onclick = () => {
+    const id = b.dataset.del, e = entryById(id);
+    if(!e) return;
+    const tools = app.querySelector(`[data-tools="${id}"]`);
+    const restore = tools.innerHTML;
+    tools.innerHTML = `<div class="confirm">
+        <span>Löschen?</span>
+        <button class="yes">Ja</button><button class="no">Nein</button>
+      </div>`;
+    tools.querySelector(".no").onclick = () => { tools.innerHTML = restore; wireRows(); };
+    tools.querySelector(".yes").onclick = () => {
+      data.entries = data.entries.filter(x => x.id !== id);
+      data.recent  = data.recent.filter(r => r !== id);
+      save(); render();
+    };
+  });
+}
+
+function commitField(ev){
+  const f = ev.target;
+  const e = entryById(f.dataset.id);
+  if(!e) return;
+  const key = f.dataset.f;
+
+  if(key === "price"){
+    const raw = f.value.trim();
+    if(!raw){
+      e.price = null; e.priceDate = null;
+    }else{
+      const n = toNumber(raw);
+      if(n == null){                       // unlesbar → alten Wert zurückschreiben
+        f.value = e.price != null ? money(e.price) : "";
+        return;
+      }
+      if(n !== e.price){                   // Datum nur bei echter Änderung neu setzen
+        e.price = n;
+        e.priceDate = new Date().toISOString();
+      }
+    }
+    f.value = e.price != null ? money(e.price) : "";
+    refreshStamp(e);
+  }else{
+    const val = f.value.trim();
+    if(e[key] === val) return;
+    e[key] = val;
+  }
+  save();
+}
+
+// nur die Datumszeile auffrischen — kein Neuaufbau, der Fokus geht nicht verloren
+function refreshStamp(e){
+  app.querySelectorAll(`.row[data-row="${e.id}"] .r-side > .stamp`).forEach(el => {
+    const old = ageInDays(e.priceDate) > OLD_DAYS;
+    el.className = "stamp" + (old ? " old" : "");
+    el.innerHTML = e.priceDate
+      ? `Preis vom ${dateShort(e.priceDate)}${old ? " &middot; prüfen?" : ""}`
+      : "noch kein Preis eingetragen";
+  });
+}
+
+/* ============================================================
+   Kundenansicht — groß, ruhig, ohne Bedienelemente
+   ============================================================ */
+function openStage(id){
+  const e = entryById(id);
+  if(!e) return;
+  markUsed(id);
+
+  const box = document.createElement("div");
+  box.className = "stage";
+  box.innerHTML = `
+    <button class="s-close" title="Schließen">&times;</button>
+    ${e.image ? `<img src="${e.image}" alt="">` : ""}
+    <div class="s-name">${esc(e.name || "")}</div>
+    <div class="s-price">${e.price != null ? money(e.price) + "&nbsp;&euro;" : "&mdash;"}</div>
+    ${e.note ? `<div class="s-note">${esc(e.note)}</div>` : ""}
+    ${e.time ? `<div class="s-time">Dauer: ${esc(e.time)}</div>` : ""}
+    <div class="s-hint">Tippen zum Schließen</div>`;
+
+  const close = () => { box.remove(); document.removeEventListener("keydown", onKey); };
+  const onKey = ev => { if(ev.key === "Escape") close(); };
+  box.onclick = close;
+  document.addEventListener("keydown", onKey);
+  document.body.appendChild(box);
+}
+
+function openLightbox(src){
+  const box = document.createElement("div");
+  box.className = "lightbox";
+  box.innerHTML = `<button title="Schließen">&times;</button><img src="${src}" alt="">`;
+  const close = () => { box.remove(); document.removeEventListener("keydown", onKey); };
+  const onKey = ev => { if(ev.key === "Escape") close(); };
+  box.onclick = close;
+  document.addEventListener("keydown", onKey);
+  document.body.appendChild(box);
+}
+
+/* ============================================================
+   Suche oben
+   ============================================================ */
+const searchField = document.getElementById("search");
+const searchBar = document.querySelector(".searchbar");
+
+searchField.addEventListener("input", () => {
+  query = searchField.value.trim();
+  searchBar.classList.toggle("searching", query !== "");
+  render();
+});
+searchField.addEventListener("keydown", ev => {
+  if(ev.key === "Escape") clearSearch();
+});
+document.getElementById("searchClear").onclick = clearSearch;
+
+function clearSearch(){
+  query = "";
+  searchField.value = "";
+  searchBar.classList.remove("searching");
+  render();
+  searchField.focus();
+}
+
+/* ============================================================
+   Export / Import
+   ============================================================ */
+document.getElementById("exportBtn").onclick = () => {
+  writeThrough();
+  const name = `preisliste-${new Date().toISOString().slice(0,10)}.json`;
+  const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type:"application/json" }));
+  const a = document.createElement("a");
+  a.href = url; a.download = name;
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+  showStorage(`Gesichert als ${name}.`);
+};
+
+document.getElementById("importBtn").onclick = () => document.getElementById("importFile").click();
+
+document.getElementById("importFile").addEventListener("change", ev => {
+  const file = ev.target.files && ev.target.files[0];
+  ev.target.value = "";
+  if(!file) return;
+
+  const reader = new FileReader();
+  reader.onload = res => {
+    let incoming;
+    try{
+      incoming = JSON.parse(res.target.result);
+      if(!Array.isArray(incoming.categories) || !Array.isArray(incoming.entries))
+        throw new Error("Die Datei enthält keine Preisliste.");
+    }catch(err){
+      return showStorage("Import fehlgeschlagen: " + err.message);
+    }
+    askImportMode(incoming);
   };
   reader.readAsText(file);
 });
 
-// ---- init ----
+// Rückfrage inline im Datenfeld statt als Systemdialog
+function askImportMode(incoming){
+  const note = document.getElementById("dataNote");
+  note.innerHTML = `<div class="confirm" style="color:var(--ink);justify-content:flex-start">
+      <span><b>${incoming.entries.length}</b> ${incoming.entries.length === 1 ? "Zeile" : "Zeilen"} gefunden. Wie einfügen?</span>
+    </div>
+    <div class="data-row" style="margin-top:10px">
+      <button class="btn ghost" id="impMerge">Dazunehmen</button>
+      <button class="btn warn" id="impReplace">Alles ersetzen</button>
+      <button class="btn ghost" id="impCancel">Abbrechen</button>
+    </div>`;
+
+  document.getElementById("impCancel").onclick = () => showStorage("Import abgebrochen.");
+
+  document.getElementById("impReplace").onclick = () => {
+    data = {
+      categories: incoming.categories,
+      entries: incoming.entries,
+      recent: Array.isArray(incoming.recent) ? incoming.recent : []
+    };
+    writeThrough();
+    view = { screen:"home", categoryId:null };
+    render();
+    showStorage(`Ersetzt — ${plural(data.entries.length, "Zeile", "Zeilen")} übernommen.`);
+  };
+
+  document.getElementById("impMerge").onclick = () => {
+    const map = {};
+    incoming.categories.forEach(c => {
+      const same = data.categories.find(x => x.name.toLowerCase() === String(c.name).toLowerCase());
+      if(same){ map[c.id] = same.id; }
+      else { const id = uid(); map[c.id] = id; data.categories.push({ id, name:c.name }); }
+    });
+    let added = 0;
+    incoming.entries.forEach(e => {
+      data.entries.push(Object.assign({}, e, { id: uid(), categoryId: map[e.categoryId] || e.categoryId }));
+      added++;
+    });
+    writeThrough();
+    view = { screen:"home", categoryId:null };
+    render();
+    showStorage(`Dazugenommen — ${plural(added, "Zeile", "Zeilen")} ergänzt.`);
+  };
+}
+
+/* ============================================================
+   Speicherhinweis
+   ============================================================ */
+function showStorage(message){
+  const note = document.getElementById("dataNote");
+  const bytes = new Blob([JSON.stringify(data)]).size;
+  const size = bytes > 1048576 ? (bytes / 1048576).toFixed(1) + " MB" : Math.round(bytes / 1024) + " KB";
+  const withImages = data.entries.filter(e => e.image).length;
+  const n = data.entries.length;
+  note.innerHTML =
+    (message ? `<b>${esc(message)}</b><br>` : "") +
+    `Alles bleibt auf diesem Gerät — <b>${n}</b> ${n === 1 ? "Zeile" : "Zeilen"}, ` +
+    `<b>${withImages}</b> mit Bild, zusammen <b>${size}</b>. ` +
+    `Der Browser gibt dafür rund 5 MB frei; regelmäßig exportieren.`;
+}
+
+/* ============================================================
+   Zeichnen
+   ============================================================ */
+function render(){
+  if(query) renderSearch();
+  else if(view.screen === "category") renderCategory(view.categoryId);
+  else renderHome();
+}
+const scrollTop = () => window.scrollTo({ top:0, behavior:"smooth" });
+
 render();
+showStorage();
 
 })();
 </script>
