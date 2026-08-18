@@ -311,6 +311,7 @@
 const KEY = "goldschmiede_preisliste_v1";
 const RECENT_MAX = 6;
 const OLD_DAYS = 180;         // ab hier Hinweis: Goldpreis prüfen?
+const WORK_DAY_HOURS = 8;     // "2 Tage" -> 16 Std.
 
 const uid = () => "id-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 9);
 
@@ -334,18 +335,27 @@ function stripImages(entries){
 }
 
 function loadData(){
+  let d;
   try{
     const raw = localStorage.getItem(KEY);
     if(!raw) return freshData();
-    const d = JSON.parse(raw);
+    d = JSON.parse(raw);
     if(!Array.isArray(d.categories) || !Array.isArray(d.entries)) return freshData();
     if(!Array.isArray(d.recent)) d.recent = [];
-    stripImages(d.entries);
-    return d;
   }catch(err){
     console.error("Daten konnten nicht gelesen werden:", err);
     return freshData();
   }
+
+  // Umschreiben getrennt absichern: eine gelesene Liste darf niemals
+  // wegen eines Fehlers in der Umstellung verlorengehen.
+  try{
+    stripImages(d.entries);
+    d.entries.forEach(e => { if(e && e.time) e.time = normalizeDuration(e.time); });
+  }catch(err){
+    console.error("Umstellung übersprungen:", err);
+  }
+  return d;
 }
 
 let data = loadData();
@@ -392,6 +402,63 @@ function toNumber(input){
 
 const money = n => (n == null || !Number.isFinite(n))
   ? "" : n.toLocaleString("de-DE", { minimumFractionDigits:2, maximumFractionDigits:2 });
+
+/* ---------- Dauer ----------
+   Eingetragen wird, wie es am Tresen gesagt wird ("20 Min.", "1:30",
+   "1 Std 30", "2 Tage"); angezeigt wird durchgehend in Stunden.
+   Eine blanke Zahl gilt als Stunden — das Feld zeigt ja Stunden an,
+   also meint eine Korrektur von "1,5 Std." auf "2" auch zwei Stunden. */
+function parseDuration(input){
+  if(input == null) return null;
+  const s = String(input).trim().toLowerCase();
+  if(!s) return null;
+
+  // 1:30 als Stunden:Minuten. Nur der Doppelpunkt zählt hier — der Punkt
+  // ist in dieser App durchgehend Dezimaltrenner (wie beim Preis), sonst
+  // würde aus "1.25" still 1:25 statt 1,25 Stunden.
+  const clock = s.match(/^(\d+)\s*:\s*([0-5]\d)\s*(?:h|std\.?|stunden?)?$/);
+  if(clock) return Number(clock[1]) + Number(clock[2]) / 60;
+
+  const factor = u => {
+    if(/^(min|minute|minuten|m)$/.test(u)) return 1 / 60;
+    if(/^(h|std|stunde|stunden|std\.)$/.test(u)) return 1;
+    if(/^(t|tag|tage|d)$/.test(u)) return WORK_DAY_HOURS;
+    return null;
+  };
+
+  let total = 0, found = false, lastWasHours = false;
+  const token = /(\d+(?:[.,]\d+)?)\s*([a-zäöü.]*)/g;
+  let m;
+  while((m = token.exec(s)) !== null){
+    const wert = parseFloat(m[1].replace(",", "."));
+    if(!Number.isFinite(wert)) continue;
+    const einheit = m[2].replace(/\.$/, "");
+    let f = einheit ? factor(einheit) : null;
+    if(einheit && f === null) return null;        // unbekannte Einheit → Text belassen
+    if(f === null){
+      // "1 Std 30" — die nachgestellte blanke Zahl sind Minuten,
+      // eine allein stehende blanke Zahl sind Stunden.
+      f = lastWasHours ? 1 / 60 : 1;
+    }
+    lastWasHours = f === 1;
+    total += wert * f;
+    found = true;
+  }
+  return found ? total : null;
+}
+
+function formatDuration(hours){
+  if(hours == null || !Number.isFinite(hours)) return "";
+  const gerundet = Math.round(hours * 100) / 100;
+  return gerundet.toLocaleString("de-DE", { maximumFractionDigits: 2 }) + " Std.";
+}
+
+// Freitext in Stunden umschreiben; was sich nicht deuten lässt
+// (etwa "nach Aufwand"), bleibt unverändert stehen.
+function normalizeDuration(text){
+  const h = parseDuration(text);
+  return h === null ? String(text ?? "").trim() : formatDuration(h);
+}
 
 function dateShort(iso){
   const d = iso ? new Date(iso) : null;
@@ -453,7 +520,7 @@ function rowHTML(e, opts){
 
     <div class="r-meta">
       <input class="f f-note" data-f="note" data-id="${e.id}" value="${esc(e.note)}" placeholder="Notiz">
-      <input class="f f-time" data-f="time" data-id="${e.id}" value="${esc(e.time)}" placeholder="Dauer">
+      <input class="f f-time" data-f="time" data-id="${e.id}" value="${esc(e.time)}" placeholder="Dauer in Std.">
       ${opts.showCategory && cat ? `<div class="r-cat">${esc(cat.name)}</div>` : ""}
     </div>
 
@@ -711,6 +778,11 @@ function commitField(ev){
     }
     f.value = e.price != null ? money(e.price) : "";
     refreshStamp(e);
+  }else if(key === "time"){
+    const val = normalizeDuration(f.value);   // "90 Min." → "1,5 Std."
+    f.value = val;
+    if(e.time === val) return;
+    e.time = val;
   }else{
     const val = f.value.trim();
     if(e[key] === val) return;
