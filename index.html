@@ -1,0 +1,869 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+<title>Goldschmiede Preisliste</title>
+<style>
+  :root{
+    --bg:#faf8f4;
+    --bg-card:#ffffff;
+    --border:#e3ddd0;
+    --border-strong:#c9bfa8;
+    --text:#2b2620;
+    --text-dim:#7a7364;
+    --accent:#8a6d3b;
+    --accent-dark:#6b5228;
+    --accent-bg:#f1e6cf;
+    --danger:#a33b2e;
+    --danger-bg:#f7e6e3;
+    --radius:14px;
+    --shadow:0 1px 3px rgba(0,0,0,0.06);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    background:var(--bg);
+    color:var(--text);
+    font-size:19px;
+    line-height:1.4;
+    padding-bottom:60px;
+  }
+  .wrap{max-width:900px;margin:0 auto;padding:16px;}
+  h1{font-size:1.4rem;margin:4px 0 16px;text-align:center;color:var(--accent-dark);font-weight:700;letter-spacing:.02em;}
+
+  /* Search */
+  .search-box{
+    position:sticky;top:0;z-index:20;
+    background:var(--bg);
+    padding:8px 0 12px;
+  }
+  #search{
+    width:100%;
+    font-size:1.15rem;
+    padding:16px 18px;
+    border-radius:var(--radius);
+    border:2px solid var(--border-strong);
+    background:var(--bg-card);
+    color:var(--text);
+  }
+  #search:focus{outline:3px solid var(--accent-bg);border-color:var(--accent);}
+
+  .search-results{margin-top:10px;}
+  .search-hit{
+    background:var(--bg-card);
+    border:1px solid var(--border);
+    border-radius:var(--radius);
+    padding:10px 14px;
+    margin-bottom:8px;
+    box-shadow:var(--shadow);
+  }
+  .search-hit .hit-cat{font-size:.85rem;color:var(--text-dim);}
+
+  /* Buttons */
+  button{
+    font-family:inherit;
+    font-size:1rem;
+    cursor:pointer;
+  }
+  .btn{
+    border:none;
+    border-radius:10px;
+    padding:12px 16px;
+    background:var(--accent);
+    color:#fff;
+    font-weight:600;
+  }
+  .btn:hover{background:var(--accent-dark);}
+  .btn.secondary{
+    background:var(--bg-card);
+    color:var(--text);
+    border:1.5px solid var(--border-strong);
+  }
+  .btn.secondary:hover{background:var(--accent-bg);}
+  .btn.danger{background:var(--danger);}
+  .btn.danger:hover{background:#7e2c22;}
+  .icon-btn{
+    border:none;
+    background:transparent;
+    color:var(--text-dim);
+    font-size:1.3rem;
+    padding:8px 10px;
+    border-radius:8px;
+    line-height:1;
+  }
+  .icon-btn:hover{background:var(--accent-bg);color:var(--accent-dark);}
+
+  /* Sections */
+  .section{margin-bottom:26px;}
+  .section-title{
+    font-size:1rem;
+    color:var(--text-dim);
+    text-transform:uppercase;
+    letter-spacing:.06em;
+    margin:0 0 10px 2px;
+    font-weight:700;
+  }
+
+  /* Category grid on start page */
+  .cat-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fill,minmax(160px,1fr));
+    gap:12px;
+  }
+  .cat-tile{
+    background:var(--bg-card);
+    border:1.5px solid var(--border);
+    border-radius:var(--radius);
+    padding:22px 14px;
+    text-align:center;
+    font-size:1.15rem;
+    font-weight:700;
+    color:var(--text);
+    box-shadow:var(--shadow);
+    min-height:88px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+  }
+  .cat-tile:hover{border-color:var(--accent);background:var(--accent-bg);}
+  .cat-tile .cat-count{
+    display:block;
+    font-size:.8rem;
+    font-weight:400;
+    color:var(--text-dim);
+    margin-top:4px;
+  }
+  .cat-tile-wrap{position:relative;}
+  .cat-tile-edit{
+    position:absolute;top:4px;right:4px;
+    font-size:1rem;
+    padding:4px 8px;
+    background:rgba(255,255,255,0.85);
+    border-radius:8px;
+    border:1px solid var(--border);
+  }
+  .add-cat-row{display:flex;gap:8px;margin-top:12px;}
+  .add-cat-row input{
+    flex:1;
+    padding:12px;
+    border-radius:10px;
+    border:1.5px solid var(--border-strong);
+    font-size:1rem;
+  }
+
+  /* Recently used */
+  .recent-list .entry-row{background:#fffdf8;}
+
+  /* Category detail */
+  .cat-header{display:flex;align-items:center;gap:8px;margin-bottom:14px;flex-wrap:wrap;}
+  .cat-header h2{margin:0;font-size:1.3rem;flex:1;color:var(--accent-dark);}
+  .back-btn{font-size:1.5rem;padding:6px 12px;}
+
+  /* Entry rows */
+  .entries{display:flex;flex-direction:column;gap:10px;}
+  .entry-row{
+    background:var(--bg-card);
+    border:1.5px solid var(--border);
+    border-radius:var(--radius);
+    padding:12px;
+    box-shadow:var(--shadow);
+    display:grid;
+    grid-template-columns:64px 1fr auto;
+    gap:10px;
+    align-items:start;
+  }
+  .entry-thumb-wrap{
+    width:64px;height:64px;
+    border-radius:10px;
+    overflow:hidden;
+    background:var(--accent-bg);
+    display:flex;align-items:center;justify-content:center;
+    cursor:pointer;
+    border:1px solid var(--border);
+    flex-shrink:0;
+  }
+  .entry-thumb-wrap img{width:100%;height:100%;object-fit:cover;display:block;}
+  .entry-thumb-wrap .no-img{font-size:1.6rem;color:var(--border-strong);}
+  .entry-fields{display:flex;flex-direction:column;gap:6px;min-width:0;}
+  .entry-fields input[type=text],
+  .entry-fields input.field{
+    width:100%;
+    font-size:1.05rem;
+    padding:9px 10px;
+    border-radius:9px;
+    border:1.5px solid var(--border);
+    background:#fff;
+    color:var(--text);
+  }
+  .entry-fields input:focus{outline:none;border-color:var(--accent);background:#fffef9;}
+  .field-name{font-weight:700;font-size:1.15rem !important;}
+  .row-line2{display:flex;gap:8px;flex-wrap:wrap;}
+  .row-line2 > *{flex:1;min-width:110px;}
+  .price-wrap{position:relative;display:flex;align-items:center;}
+  .price-wrap input{padding-right:32px;text-align:right;}
+  .price-wrap .eur{position:absolute;right:10px;color:var(--text-dim);pointer-events:none;font-weight:600;}
+  .meta-line{font-size:.82rem;color:var(--text-dim);margin-top:2px;display:flex;gap:10px;flex-wrap:wrap;}
+  .meta-line .stale{color:var(--danger);font-weight:600;}
+  .entry-actions{display:flex;flex-direction:column;gap:6px;align-items:center;}
+
+  .add-entry-btn{
+    width:100%;
+    padding:16px;
+    border-radius:var(--radius);
+    border:2px dashed var(--border-strong);
+    background:transparent;
+    color:var(--accent-dark);
+    font-size:1.1rem;
+    font-weight:700;
+    margin-top:14px;
+  }
+  .add-entry-btn:hover{background:var(--accent-bg);}
+
+  /* image lightbox */
+  .lightbox{
+    position:fixed;inset:0;background:rgba(20,16,10,0.85);
+    display:flex;align-items:center;justify-content:center;
+    z-index:100;padding:20px;
+  }
+  .lightbox img{max-width:100%;max-height:90vh;border-radius:10px;box-shadow:0 10px 40px rgba(0,0,0,.5);}
+  .lightbox .close-lb{
+    position:absolute;top:16px;right:20px;
+    font-size:2rem;color:#fff;background:transparent;border:none;
+  }
+
+  /* top bar */
+  .topbar{display:flex;justify-content:flex-end;gap:8px;margin-bottom:6px;}
+
+  /* export/import panel */
+  .io-panel{
+    background:var(--bg-card);
+    border:1.5px solid var(--border);
+    border-radius:var(--radius);
+    padding:16px;
+    margin-top:24px;
+  }
+  .io-panel h3{margin-top:0;font-size:1rem;color:var(--text-dim);text-transform:uppercase;letter-spacing:.06em;}
+  .io-row{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px;}
+
+  .empty-msg{color:var(--text-dim);text-align:center;padding:30px 10px;}
+  .confirm-inline{display:flex;gap:8px;align-items:center;margin-top:6px;}
+
+  @media (max-width:480px){
+    body{font-size:17px;}
+    .entry-row{grid-template-columns:52px 1fr;}
+    .entry-thumb-wrap{width:52px;height:52px;}
+    .entry-actions{grid-column:1 / -1;flex-direction:row;justify-content:flex-end;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Goldschmiede Preisliste</h1>
+
+  <div class="search-box">
+    <input type="text" id="search" placeholder="Suchen… (z.B. Ring, Kette, Loeten)" autocomplete="off">
+    <div class="search-results" id="searchResults"></div>
+  </div>
+
+  <div id="app"></div>
+
+  <div class="io-panel">
+    <h3>Daten</h3>
+    <div class="io-row">
+      <button class="btn secondary" id="exportBtn">Export (JSON)</button>
+      <button class="btn secondary" id="importBtn">Import (JSON)</button>
+      <input type="file" id="importFile" accept="application/json" style="display:none">
+    </div>
+    <div id="ioMsg" style="margin-top:8px;color:var(--text-dim);font-size:.9rem;"></div>
+  </div>
+</div>
+
+<script>
+(function(){
+"use strict";
+
+const STORAGE_KEY = "goldschmiede_preisliste_v1";
+const MAX_IMG_DIM = 480;
+const IMG_QUALITY = 0.72;
+const MAX_RECENT = 8;
+
+function uid(){
+  return 'id-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2,9);
+}
+
+function defaultData(){
+  return {
+    categories: [
+      { id: uid(), name: "Loeten" },
+      { id: uid(), name: "Reparatur" },
+      { id: uid(), name: "Anfertigung" },
+      { id: uid(), name: "Umarbeitung" }
+    ],
+    entries: [],
+    recent: []
+  };
+}
+
+function load(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(!raw) return defaultData();
+    const parsed = JSON.parse(raw);
+    if(!parsed.categories || !parsed.entries) return defaultData();
+    if(!parsed.recent) parsed.recent = [];
+    return parsed;
+  }catch(e){
+    console.error("Laden fehlgeschlagen", e);
+    return defaultData();
+  }
+}
+
+let data = load();
+let saveTimer = null;
+function save(){
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(()=>{
+    try{
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    }catch(e){
+      alert("Speichern fehlgeschlagen (Speicher evtl. voll): " + e.message);
+    }
+  }, 120);
+}
+
+function saveNow(){
+  clearTimeout(saveTimer);
+  try{
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  }catch(e){
+    alert("Speichern fehlgeschlagen (Speicher evtl. voll): " + e.message);
+  }
+}
+
+// ---- routing state ----
+let view = { screen: "home", categoryId: null };
+
+// ---- helpers ----
+function parsePrice(str){
+  if(str === null || str === undefined) return null;
+  let s = String(str).trim();
+  if(s === "") return null;
+  s = s.replace(/[^\d.,\-]/g,"");
+  // if both , and . present, assume . is thousands sep, , is decimal (de-style) OR vice versa
+  if(s.indexOf(",") !== -1 && s.indexOf(".") !== -1){
+    if(s.lastIndexOf(",") > s.lastIndexOf(".")){
+      s = s.replace(/\./g,"").replace(",", ".");
+    } else {
+      s = s.replace(/,/g,"");
+    }
+  } else if(s.indexOf(",") !== -1){
+    s = s.replace(",", ".");
+  }
+  const n = parseFloat(s);
+  return isNaN(n) ? null : n;
+}
+
+function formatPrice(n){
+  if(n === null || n === undefined || isNaN(n)) return "";
+  return n.toLocaleString("de-DE", {minimumFractionDigits:2, maximumFractionDigits:2});
+}
+
+function formatDate(iso){
+  if(!iso) return "";
+  const d = new Date(iso);
+  if(isNaN(d.getTime())) return "";
+  return d.toLocaleDateString("de-DE", {day:"2-digit", month:"2-digit", year:"numeric"});
+}
+
+function daysSince(iso){
+  if(!iso) return Infinity;
+  const d = new Date(iso);
+  if(isNaN(d.getTime())) return Infinity;
+  return (Date.now() - d.getTime()) / 86400000;
+}
+
+const STALE_DAYS = 180; // ~6 Monate -> Hinweis, Goldpreis pruefen
+
+function escapeHtml(s){
+  return String(s == null ? "" : s).replace(/[&<>"']/g, c => ({
+    "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
+  }[c]));
+}
+
+function getCategory(id){
+  return data.categories.find(c => c.id === id);
+}
+function entriesForCategory(id){
+  return data.entries.filter(e => e.categoryId === id);
+}
+
+function touchRecent(entryId){
+  data.recent = data.recent.filter(id => id !== entryId);
+  data.recent.unshift(entryId);
+  data.recent = data.recent.slice(0, MAX_RECENT);
+  save();
+}
+
+// ---- image handling ----
+function resizeImageFile(file, cb){
+  const reader = new FileReader();
+  reader.onload = function(e){
+    const img = new Image();
+    img.onload = function(){
+      let w = img.width, h = img.height;
+      if(w > h){
+        if(w > MAX_IMG_DIM){ h = Math.round(h * MAX_IMG_DIM / w); w = MAX_IMG_DIM; }
+      } else {
+        if(h > MAX_IMG_DIM){ w = Math.round(w * MAX_IMG_DIM / h); h = MAX_IMG_DIM; }
+      }
+      const canvas = document.createElement("canvas");
+      canvas.width = w; canvas.height = h;
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(img, 0, 0, w, h);
+      const dataUrl = canvas.toDataURL("image/jpeg", IMG_QUALITY);
+      cb(dataUrl);
+    };
+    img.onerror = function(){ alert("Bild konnte nicht geladen werden."); };
+    img.src = e.target.result;
+  };
+  reader.onerror = function(){ alert("Datei konnte nicht gelesen werden."); };
+  reader.readAsDataURL(file);
+}
+
+// ---- rendering ----
+const app = document.getElementById("app");
+
+function render(){
+  if(view.screen === "home") renderHome();
+  else if(view.screen === "category") renderCategory(view.categoryId);
+}
+
+function renderHome(){
+  const recentEntries = data.recent
+    .map(id => data.entries.find(e => e.id === id))
+    .filter(Boolean);
+
+  let html = "";
+
+  if(recentEntries.length){
+    html += `<div class="section">
+      <div class="section-title">Zuletzt benutzt</div>
+      <div class="entries recent-list">
+        ${recentEntries.map(e => entryRowHtml(e)).join("")}
+      </div>
+    </div>`;
+  }
+
+  html += `<div class="section">
+    <div class="section-title">Kategorien</div>
+    <div class="cat-grid" id="catGrid">
+      ${data.categories.map(c => `
+        <div class="cat-tile-wrap">
+          <div class="cat-tile" data-cat="${c.id}">
+            ${escapeHtml(c.name)}
+            <span class="cat-count">${entriesForCategory(c.id).length} Eintraege</span>
+          </div>
+          <button class="cat-tile-edit" data-editcat="${c.id}" title="Kategorie umbenennen/loeschen">&#9998;</button>
+        </div>
+      `).join("")}
+    </div>
+    <div class="add-cat-row">
+      <input type="text" id="newCatName" placeholder="Neue Kategorie…">
+      <button class="btn" id="addCatBtn">+ Kategorie</button>
+    </div>
+  </div>`;
+
+  app.innerHTML = html;
+  bindHomeEvents();
+}
+
+function renderCategory(catId){
+  const cat = getCategory(catId);
+  if(!cat){ view = {screen:"home", categoryId:null}; return render(); }
+  const entries = entriesForCategory(catId);
+
+  let html = `<div class="cat-header">
+      <button class="icon-btn back-btn" id="backBtn" title="Zurueck">&#8592;</button>
+      <h2>${escapeHtml(cat.name)}</h2>
+    </div>`;
+
+  html += `<div class="entries" id="entryList">`;
+  if(entries.length === 0){
+    html += `<div class="empty-msg">Noch keine Eintraege. Mit dem Plus-Knopf unten hinzufuegen.</div>`;
+  } else {
+    html += entries.map(e => entryRowHtml(e)).join("");
+  }
+  html += `</div>`;
+
+  html += `<button class="add-entry-btn" id="addEntryBtn">+ Neue Zeile</button>`;
+
+  app.innerHTML = html;
+  bindCategoryEvents(catId);
+}
+
+function entryRowHtml(e){
+  const cat = getCategory(e.categoryId);
+  const stale = daysSince(e.priceDate) > STALE_DAYS;
+  return `
+  <div class="entry-row" data-entry="${e.id}">
+    <div class="entry-thumb-wrap" data-thumb="${e.id}">
+      ${e.image ? `<img src="${e.image}" alt="">` : `<span class="no-img">&#128247;</span>`}
+    </div>
+    <div class="entry-fields">
+      <input type="text" class="field field-name" data-field="name" data-entry="${e.id}" value="${escapeHtml(e.name)}" placeholder="Bezeichnung" tabindex="0">
+      <div class="row-line2">
+        <div class="price-wrap">
+          <input type="text" inputmode="decimal" class="field field-price" data-field="price" data-entry="${e.id}" value="${e.price != null ? formatPrice(e.price) : ""}" placeholder="Preis" tabindex="0">
+          <span class="eur">&euro;</span>
+        </div>
+        <input type="text" class="field field-time" data-field="time" data-entry="${e.id}" value="${escapeHtml(e.time||"")}" placeholder="Dauer (z.B. 20 Min.)" tabindex="0">
+      </div>
+      <input type="text" class="field field-note" data-field="note" data-entry="${e.id}" value="${escapeHtml(e.note||"")}" placeholder="Notiz (z.B. plus Material)" tabindex="0">
+      <div class="meta-line">
+        ${e.priceDate ? `<span class="${stale ? 'stale':''}">Preis vom ${formatDate(e.priceDate)}${stale ? ' – pruefen?' : ''}</span>` : `<span>Noch kein Preisdatum</span>`}
+        ${!(view.screen==='category') && cat ? `<span>${escapeHtml(cat.name)}</span>` : ""}
+      </div>
+    </div>
+    <div class="entry-actions">
+      <label class="icon-btn" title="Bild hinzufuegen/ersetzen" style="cursor:pointer;">
+        &#128248;
+        <input type="file" accept="image/*" capture="environment" style="display:none" data-imgfor="${e.id}">
+      </label>
+      <button class="icon-btn" data-delentry="${e.id}" title="Zeile loeschen">&#128465;</button>
+    </div>
+  </div>`;
+}
+
+// ---- events: home ----
+function bindHomeEvents(){
+  app.querySelectorAll("[data-cat]").forEach(el => {
+    el.addEventListener("click", () => {
+      view = { screen:"category", categoryId: el.getAttribute("data-cat") };
+      render();
+      window.scrollTo(0,0);
+    });
+  });
+  app.querySelectorAll("[data-editcat]").forEach(el => {
+    el.addEventListener("click", (ev) => {
+      ev.stopPropagation();
+      editCategory(el.getAttribute("data-editcat"));
+    });
+  });
+  document.getElementById("addCatBtn").addEventListener("click", addCategory);
+  document.getElementById("newCatName").addEventListener("keydown", (ev) => {
+    if(ev.key === "Enter") addCategory();
+  });
+
+  bindEntryRowEvents();
+}
+
+function addCategory(){
+  const input = document.getElementById("newCatName");
+  const name = input.value.trim();
+  if(!name) return;
+  data.categories.push({ id: uid(), name });
+  save();
+  render();
+}
+
+function editCategory(catId){
+  const cat = getCategory(catId);
+  if(!cat) return;
+  const newName = prompt("Kategorie umbenennen:", cat.name);
+  if(newName === null) return;
+  const trimmed = newName.trim();
+  if(trimmed === ""){
+    const count = entriesForCategory(catId).length;
+    if(confirm(`Kategorie "${cat.name}" wirklich loeschen?` + (count ? ` ${count} Eintraege werden ebenfalls geloescht.` : ""))){
+      data.categories = data.categories.filter(c => c.id !== catId);
+      data.entries = data.entries.filter(e => e.categoryId !== catId);
+      data.recent = data.recent.filter(id => data.entries.some(e => e.id === id));
+      save();
+      render();
+    }
+    return;
+  }
+  cat.name = trimmed;
+  save();
+  render();
+}
+
+// ---- events: category ----
+function bindCategoryEvents(catId){
+  document.getElementById("backBtn").addEventListener("click", () => {
+    view = { screen:"home", categoryId:null };
+    render();
+    window.scrollTo(0,0);
+  });
+  document.getElementById("addEntryBtn").addEventListener("click", () => {
+    const e = {
+      id: uid(),
+      categoryId: catId,
+      name: "",
+      price: null,
+      priceDate: null,
+      note: "",
+      time: "",
+      image: null
+    };
+    data.entries.push(e);
+    save();
+    render();
+    const nameInput = app.querySelector(`input[data-field="name"][data-entry="${e.id}"]`);
+    if(nameInput) nameInput.focus();
+  });
+  bindEntryRowEvents();
+}
+
+// ---- shared entry-row events (works in both home recent list & category list) ----
+function bindEntryRowEvents(){
+  app.querySelectorAll("input[data-field]").forEach(inp => {
+    inp.addEventListener("change", onFieldChange);
+    inp.addEventListener("blur", onFieldChange);
+  });
+  app.querySelectorAll("[data-delentry]").forEach(btn => {
+    btn.addEventListener("click", () => deleteEntry(btn.getAttribute("data-delentry")));
+  });
+  app.querySelectorAll("[data-thumb]").forEach(el => {
+    el.addEventListener("click", () => {
+      const id = el.getAttribute("data-thumb");
+      const entry = data.entries.find(e => e.id === id);
+      if(entry && entry.image) openLightbox(entry.image);
+    });
+  });
+  app.querySelectorAll("input[data-imgfor]").forEach(inp => {
+    inp.addEventListener("change", (ev) => {
+      const id = inp.getAttribute("data-imgfor");
+      const file = ev.target.files[0];
+      if(!file) return;
+      resizeImageFile(file, (dataUrl) => {
+        const entry = data.entries.find(e => e.id === id);
+        if(!entry) return;
+        entry.image = dataUrl;
+        save();
+        render();
+      });
+    });
+  });
+}
+
+function onFieldChange(ev){
+  const inp = ev.target;
+  const field = inp.getAttribute("data-field");
+  const id = inp.getAttribute("data-entry");
+  const entry = data.entries.find(e => e.id === id);
+  if(!entry) return;
+
+  if(field === "name"){
+    entry.name = inp.value.trim();
+  } else if(field === "price"){
+    const val = inp.value.trim();
+    const parsed = parsePrice(val);
+    if(val === ""){
+      entry.price = null;
+      entry.priceDate = null;
+    } else if(parsed !== null && parsed !== entry.price){
+      entry.price = parsed;
+      entry.priceDate = new Date().toISOString();
+    } else if(parsed !== null){
+      entry.price = parsed;
+    }
+    inp.value = entry.price != null ? formatPrice(entry.price) : "";
+    // update the meta-line date display without a full re-render if possible
+  } else if(field === "note"){
+    entry.note = inp.value.trim();
+  } else if(field === "time"){
+    entry.time = inp.value.trim();
+  }
+  save();
+  // light refresh of just the meta line for price changes / date display
+  refreshEntryMeta(entry);
+}
+
+function refreshEntryMeta(entry){
+  app.querySelectorAll(`.entry-row[data-entry="${entry.id}"] .meta-line`).forEach(el => {
+    const stale = daysSince(entry.priceDate) > STALE_DAYS;
+    const cat = getCategory(entry.categoryId);
+    el.innerHTML = `
+      ${entry.priceDate ? `<span class="${stale ? 'stale':''}">Preis vom ${formatDate(entry.priceDate)}${stale ? ' – pruefen?' : ''}</span>` : `<span>Noch kein Preisdatum</span>`}
+      ${view.screen !== 'category' && cat ? `<span>${escapeHtml(cat.name)}</span>` : ""}
+    `;
+  });
+}
+
+function deleteEntry(id){
+  const entry = data.entries.find(e => e.id === id);
+  if(!entry) return;
+  if(!confirm(`"${entry.name || 'Eintrag ohne Namen'}" wirklich loeschen?`)) return;
+  data.entries = data.entries.filter(e => e.id !== id);
+  data.recent = data.recent.filter(rid => rid !== id);
+  save();
+  render();
+}
+
+// ---- lightbox ----
+function openLightbox(src){
+  const lb = document.createElement("div");
+  lb.className = "lightbox";
+  lb.innerHTML = `<button class="close-lb" aria-label="Schliessen">&times;</button><img src="${src}" alt="">`;
+  lb.addEventListener("click", (ev) => {
+    if(ev.target === lb || ev.target.classList.contains("close-lb")) lb.remove();
+  });
+  document.body.appendChild(lb);
+}
+
+// ---- search ----
+const searchInput = document.getElementById("search");
+const searchResults = document.getElementById("searchResults");
+
+searchInput.addEventListener("input", () => {
+  const q = searchInput.value.trim().toLowerCase();
+  if(q === ""){
+    searchResults.innerHTML = "";
+    searchResults.style.display = "none";
+    app.style.display = "";
+    return;
+  }
+  const hits = data.entries.filter(e => {
+    return (e.name && e.name.toLowerCase().includes(q)) ||
+           (e.note && e.note.toLowerCase().includes(q)) ||
+           (e.time && e.time.toLowerCase().includes(q));
+  }).concat(
+    // also allow matching by category name -> show all entries of that category
+    data.categories.filter(c => c.name.toLowerCase().includes(q))
+      .flatMap(c => entriesForCategory(c.id))
+  );
+  const uniqueHits = [];
+  const seen = new Set();
+  hits.forEach(h => { if(!seen.has(h.id)){ seen.add(h.id); uniqueHits.push(h); } });
+
+  app.style.display = "none";
+  searchResults.style.display = "";
+
+  if(uniqueHits.length === 0){
+    searchResults.innerHTML = `<div class="empty-msg">Keine Treffer.</div>`;
+    return;
+  }
+
+  searchResults.innerHTML = uniqueHits.map(e => {
+    const cat = getCategory(e.categoryId);
+    const stale = daysSince(e.priceDate) > STALE_DAYS;
+    return `<div class="search-hit" data-searchentry="${e.id}">
+      <div class="hit-cat">${cat ? escapeHtml(cat.name) : ""}</div>
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
+        <div>
+          <strong style="font-size:1.1rem;">${escapeHtml(e.name || "(ohne Namen)")}</strong>
+          ${e.note ? `<div style="color:var(--text-dim);font-size:.9rem;">${escapeHtml(e.note)}</div>` : ""}
+        </div>
+        <div style="text-align:right;">
+          <div style="font-size:1.2rem;font-weight:700;">${e.price != null ? formatPrice(e.price)+" €" : "–"}</div>
+          ${e.priceDate ? `<div class="${stale?'stale':''}" style="font-size:.8rem;">${formatDate(e.priceDate)}</div>` : ""}
+        </div>
+      </div>
+    </div>`;
+  }).join("");
+
+  searchResults.querySelectorAll("[data-searchentry]").forEach(el => {
+    el.addEventListener("click", () => {
+      const id = el.getAttribute("data-searchentry");
+      const entry = data.entries.find(x => x.id === id);
+      if(!entry) return;
+      touchRecent(id);
+      view = { screen:"category", categoryId: entry.categoryId };
+      searchInput.value = "";
+      searchResults.innerHTML = "";
+      searchResults.style.display = "none";
+      app.style.display = "";
+      render();
+      setTimeout(() => {
+        const row = app.querySelector(`.entry-row[data-entry="${id}"]`);
+        if(row){
+          row.scrollIntoView({behavior:"smooth", block:"center"});
+          row.style.transition = "background-color .3s";
+          row.style.backgroundColor = "var(--accent-bg)";
+          setTimeout(() => { row.style.backgroundColor = ""; }, 1200);
+        }
+      }, 50);
+    });
+  });
+});
+
+// ---- export / import ----
+document.getElementById("exportBtn").addEventListener("click", () => {
+  const blob = new Blob([JSON.stringify(data, null, 2)], {type:"application/json"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  const stamp = new Date().toISOString().slice(0,10);
+  a.href = url;
+  a.download = `goldschmiede-preisliste-${stamp}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  const msg = document.getElementById("ioMsg");
+  msg.textContent = "Export erstellt: " + a.download;
+});
+
+document.getElementById("importBtn").addEventListener("click", () => {
+  document.getElementById("importFile").click();
+});
+
+document.getElementById("importFile").addEventListener("change", (ev) => {
+  const file = ev.target.files[0];
+  if(!file) return;
+  const msg = document.getElementById("ioMsg");
+  const reader = new FileReader();
+  reader.onload = function(e){
+    try{
+      const imported = JSON.parse(e.target.result);
+      if(!imported.categories || !imported.entries){
+        throw new Error("Ungueltiges Format (categories/entries fehlen).");
+      }
+      const replace = confirm("Import: OK = alle aktuellen Daten ersetzen. Abbrechen = importierte Daten zu bestehenden hinzufuegen.");
+      if(replace){
+        data = {
+          categories: imported.categories,
+          entries: imported.entries,
+          recent: imported.recent || []
+        };
+      } else {
+        const catIdMap = {};
+        imported.categories.forEach(c => {
+          const existing = data.categories.find(ec => ec.name === c.name);
+          if(existing){
+            catIdMap[c.id] = existing.id;
+          } else {
+            const newId = uid();
+            catIdMap[c.id] = newId;
+            data.categories.push({ id: newId, name: c.name });
+          }
+        });
+        imported.entries.forEach(en => {
+          const newEntry = Object.assign({}, en, {
+            id: uid(),
+            categoryId: catIdMap[en.categoryId] || en.categoryId
+          });
+          data.entries.push(newEntry);
+        });
+      }
+      saveNow();
+      msg.textContent = "Import erfolgreich.";
+      view = { screen:"home", categoryId:null };
+      render();
+    }catch(err){
+      msg.textContent = "Import fehlgeschlagen: " + err.message;
+    }
+    ev.target.value = "";
+  };
+  reader.readAsText(file);
+});
+
+// ---- init ----
+render();
+
+})();
+</script>
+</body>
+</html>
