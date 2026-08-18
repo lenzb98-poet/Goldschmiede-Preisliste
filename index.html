@@ -131,40 +131,17 @@
     background:var(--paper);border:1.5px solid var(--line);
     border-radius:var(--r);padding:14px;
     display:grid;
-    grid-template-columns:76px minmax(0,1fr) 208px;
+    grid-template-columns:minmax(0,1fr) 208px;
     grid-template-rows:auto auto;
     column-gap:16px;row-gap:8px;align-items:start;
     transition:border-color .18s,background-color .5s;
   }
-  .row > .thumb      {grid-column:1;grid-row:1 / span 2;}
-  .row > .r-name     {grid-column:2;grid-row:1;align-self:center;}
-  .row > .price-field{grid-column:3;grid-row:1;align-self:center;}
-  .row > .r-meta     {grid-column:2;grid-row:2;}
-  .row > .r-side     {grid-column:3;grid-row:2;}
+  .row > .r-name     {grid-column:1;grid-row:1;align-self:center;}
+  .row > .price-field{grid-column:2;grid-row:1;align-self:center;}
+  .row > .r-meta     {grid-column:1;grid-row:2;}
+  .row > .r-side     {grid-column:2;grid-row:2;}
   .row:focus-within{border-color:var(--gold);}
   .row.flash{background:var(--gold-wash);}
-
-  /* Bild */
-  .thumb{
-    width:76px;height:76px;border-radius:12px;overflow:hidden;
-    background:var(--gold-wash);border:1px solid var(--line);
-    display:flex;align-items:center;justify-content:center;position:relative;
-  }
-  .thumb img{width:100%;height:100%;object-fit:cover;display:block;}
-  .thumb .ph{font-size:1.5rem;color:#b9ad95;font-weight:300;}
-  .thumb-btn{position:absolute;inset:0;}
-  .thumb-pick{position:absolute;inset:0;cursor:pointer;}
-  .thumb-pick input{display:none;}
-  /* Bild entfernen: kleines Zeichen auf dem Vorschaubild statt eigener Knopf */
-  .thumb-off{
-    position:absolute;top:2px;right:2px;
-    width:24px;height:24px;border-radius:7px;
-    background:rgba(255,255,255,.92);color:var(--warn);
-    font-size:.8rem;line-height:1;
-    display:flex;align-items:center;justify-content:center;
-    box-shadow:0 1px 3px rgba(0,0,0,.2);
-  }
-  .thumb-off:hover{background:var(--warn);color:#fff;}
 
   /* Textfelder */
   .f{
@@ -264,18 +241,6 @@
   .stage .s-close:hover{background:var(--gold-wash);}
   .stage .s-hint{position:absolute;bottom:20px;font-size:.78rem;color:#bdb4a2;}
 
-  /* ---------- Bild groß ---------- */
-  .lightbox{
-    position:fixed;inset:0;z-index:90;background:rgba(28,23,16,.88);
-    display:flex;align-items:center;justify-content:center;padding:24px;
-  }
-  .lightbox img{max-width:100%;max-height:88vh;border-radius:12px;}
-  .lightbox button{
-    position:absolute;top:18px;right:20px;
-    width:var(--tap);height:var(--tap);border-radius:12px;
-    font-size:1.6rem;color:#fff;
-  }
-
   /* ---------- Daten ---------- */
   .data{
     margin-top:34px;padding:20px;
@@ -288,21 +253,19 @@
 
   @media (max-width:720px){
     body{font-size:17px;}
-    /* Schmal: Bezeichnung neben dem Bild über die volle Breite,
-       darunter der Preis in ganzer Zeile, dann Notiz/Dauer, dann Datum + Knöpfe.
-       Keine "auto"-Spalte für den Preis — ein Eingabefeld zieht sonst seine
-       Eigenbreite von rund 20 Zeichen und drückt die Bezeichnung weg. */
+    /* Schmal: alles untereinander — Bezeichnung, Preis, Notiz/Dauer,
+       zuletzt Datum und Knöpfe. Keine "auto"-Spalte für den Preis:
+       ein Eingabefeld zieht sonst seine Eigenbreite von rund
+       20 Zeichen und drückt die Bezeichnung weg. */
     .row{
-      grid-template-columns:56px minmax(0,1fr);
+      grid-template-columns:minmax(0,1fr);
       grid-template-rows:auto auto auto auto;
-      column-gap:10px;row-gap:6px;
+      row-gap:6px;
     }
-    .row > .thumb      {grid-column:1;grid-row:1 / span 2;}
-    .row > .r-name     {grid-column:2;grid-row:1;align-self:center;}
-    .row > .price-field{grid-column:2;grid-row:2;align-self:center;}
-    .row > .r-meta     {grid-column:1 / -1;grid-row:3;}
-    .row > .r-side     {grid-column:1 / -1;grid-row:4;align-items:stretch;}
-    .thumb{width:56px;height:56px;}
+    .row > .r-name     {grid-column:1;grid-row:1;}
+    .row > .price-field{grid-column:1;grid-row:2;}
+    .row > .r-meta     {grid-column:1;grid-row:3;}
+    .row > .r-side     {grid-column:1;grid-row:4;align-items:stretch;}
     .price-field .f-price{font-size:1.8rem;}
     .stamp{text-align:left;}
     .rowtools{justify-content:flex-start;}
@@ -346,8 +309,6 @@
    Speicher
    ============================================================ */
 const KEY = "goldschmiede_preisliste_v1";
-const IMG_MAX = 520;          // längste Kante nach dem Verkleinern
-const IMG_Q = 0.72;           // JPEG-Qualität
 const RECENT_MAX = 6;
 const OLD_DAYS = 180;         // ab hier Hinweis: Goldpreis prüfen?
 
@@ -361,6 +322,17 @@ function freshData(){
   };
 }
 
+// Bilder wurden entfernt, weil sie als base64 den knappen localStorage füllten.
+// Altbestände werden beim Laden und beim Import weggeworfen — sonst bliebe
+// der Platz belegt, obwohl nichts mehr davon angezeigt wird.
+let droppedImages = 0;
+function stripImages(entries){
+  entries.forEach(e => {
+    if(e && e.image != null){ delete e.image; droppedImages++; }
+  });
+  return entries;
+}
+
 function loadData(){
   try{
     const raw = localStorage.getItem(KEY);
@@ -368,6 +340,7 @@ function loadData(){
     const d = JSON.parse(raw);
     if(!Array.isArray(d.categories) || !Array.isArray(d.entries)) return freshData();
     if(!Array.isArray(d.recent)) d.recent = [];
+    stripImages(d.entries);
     return d;
   }catch(err){
     console.error("Daten konnten nicht gelesen werden:", err);
@@ -389,7 +362,7 @@ function writeThrough(){
     showStorage();
   }catch(err){
     showStorage("Speichern fehlgeschlagen — der Speicher ist voll. " +
-      "Bitte exportieren und einzelne Bilder entfernen.");
+      "Bitte exportieren und nicht mehr benötigte Zeilen löschen.");
   }
 }
 
@@ -445,31 +418,6 @@ function markUsed(id){
 }
 
 /* ============================================================
-   Bilder — lokal verkleinern, nichts verlässt das Gerät
-   ============================================================ */
-function shrinkImage(file, done){
-  const reader = new FileReader();
-  reader.onerror = () => alert("Die Datei konnte nicht gelesen werden.");
-  reader.onload = ev => {
-    const img = new Image();
-    img.onerror = () => alert("Das Bild konnte nicht geladen werden.");
-    img.onload = () => {
-      let { width:w, height:h } = img;
-      const scale = Math.min(1, IMG_MAX / Math.max(w, h));
-      w = Math.round(w * scale); h = Math.round(h * scale);
-      const cv = document.createElement("canvas");
-      cv.width = w; cv.height = h;
-      const ctx = cv.getContext("2d");
-      ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, w, h);   // Transparenz → weiß
-      ctx.drawImage(img, 0, 0, w, h);
-      done(cv.toDataURL("image/jpeg", IMG_Q));
-    };
-    img.src = ev.target.result;
-  };
-  reader.readAsDataURL(file);
-}
-
-/* ============================================================
    Ansichtszustand
    ============================================================ */
 let view = { screen:"home", categoryId:null };
@@ -493,17 +441,6 @@ function rowHTML(e, opts){
   // Die Grid-Plätze in der CSS sorgen für die Optik, alle Knöpfe stehen auf tabindex="-1".
   return `
   <div class="row" data-row="${e.id}">
-    <div class="thumb" data-thumb="${e.id}">
-      ${e.image
-        ? `<img src="${e.image}" alt="">
-           <button class="thumb-btn" data-big="${e.id}" tabindex="-1" title="Bild groß zeigen"></button>
-           <button class="thumb-off" data-unimg="${e.id}" tabindex="-1" title="Bild entfernen">&#10005;</button>`
-        : `<span class="ph">+</span>
-           <label class="thumb-pick" title="Bild hinzufügen">
-             <input type="file" accept="image/*" data-pick="${e.id}" tabindex="-1">
-           </label>`}
-    </div>
-
     <div class="r-name">
       <input class="f f-name" data-f="name" data-id="${e.id}" value="${esc(e.name)}" placeholder="Bezeichnung">
     </div>
@@ -668,7 +605,7 @@ function renderCategory(id){
     view = { screen:"home", categoryId:null }; render(); scrollTop();
   };
   document.getElementById("addRow").onclick = () => {
-    const e = { id:uid(), categoryId:id, name:"", price:null, priceDate:null, note:"", time:"", image:null };
+    const e = { id:uid(), categoryId:id, name:"", price:null, priceDate:null, note:"", time:"" };
     data.entries.push(e); save(); render();
     const field = app.querySelector(`.f-name[data-id="${e.id}"]`);
     if(field){ field.focus(); field.scrollIntoView({ block:"center", behavior:"smooth" }); }
@@ -718,29 +655,6 @@ function wireRows(){
       if(ev.key === "Enter"){ ev.preventDefault(); f.blur(); }
       if(ev.key === "Escape") f.blur();
     });
-  });
-
-  // Bild wählen
-  app.querySelectorAll("[data-pick]").forEach(inp => inp.addEventListener("change", ev => {
-    const file = ev.target.files && ev.target.files[0];
-    ev.target.value = "";
-    if(!file) return;
-    shrinkImage(file, url => {
-      const e = entryById(inp.dataset.pick);
-      if(!e) return;
-      e.image = url; save(); render();
-    });
-  }));
-
-  app.querySelectorAll("[data-unimg]").forEach(b => b.onclick = () => {
-    const e = entryById(b.dataset.unimg);
-    if(!e) return;
-    e.image = null; save(); render();
-  });
-
-  app.querySelectorAll("[data-big]").forEach(b => b.onclick = () => {
-    const e = entryById(b.dataset.big);
-    if(e && e.image){ markUsed(e.id); openLightbox(e.image); }
   });
 
   app.querySelectorAll("[data-stage]").forEach(b => b.onclick = () => openStage(b.dataset.stage));
@@ -828,24 +742,12 @@ function openStage(id){
   box.className = "stage";
   box.innerHTML = `
     <button class="s-close" title="Schließen">&times;</button>
-    ${e.image ? `<img src="${e.image}" alt="">` : ""}
     <div class="s-name">${esc(e.name || "")}</div>
     <div class="s-price">${e.price != null ? money(e.price) + "&nbsp;&euro;" : "&mdash;"}</div>
     ${e.note ? `<div class="s-note">${esc(e.note)}</div>` : ""}
     ${e.time ? `<div class="s-time">Dauer: ${esc(e.time)}</div>` : ""}
     <div class="s-hint">Tippen zum Schließen</div>`;
 
-  const close = () => { box.remove(); document.removeEventListener("keydown", onKey); };
-  const onKey = ev => { if(ev.key === "Escape") close(); };
-  box.onclick = close;
-  document.addEventListener("keydown", onKey);
-  document.body.appendChild(box);
-}
-
-function openLightbox(src){
-  const box = document.createElement("div");
-  box.className = "lightbox";
-  box.innerHTML = `<button title="Schließen">&times;</button><img src="${src}" alt="">`;
   const close = () => { box.remove(); document.removeEventListener("keydown", onKey); };
   const onKey = ev => { if(ev.key === "Escape") close(); };
   box.onclick = close;
@@ -905,6 +807,8 @@ document.getElementById("importFile").addEventListener("change", ev => {
       incoming = JSON.parse(res.target.result);
       if(!Array.isArray(incoming.categories) || !Array.isArray(incoming.entries))
         throw new Error("Die Datei enthält keine Preisliste.");
+      // Ältere Sicherungen können noch Bilder enthalten — die bleiben draußen.
+      stripImages(incoming.entries);
     }catch(err){
       return showStorage("Import fehlgeschlagen: " + err.message);
     }
@@ -965,12 +869,15 @@ function showStorage(message){
   const note = document.getElementById("dataNote");
   const bytes = new Blob([JSON.stringify(data)]).size;
   const size = bytes > 1048576 ? (bytes / 1048576).toFixed(1) + " MB" : Math.round(bytes / 1024) + " KB";
-  const withImages = data.entries.filter(e => e.image).length;
   const n = data.entries.length;
   note.innerHTML =
     (message ? `<b>${esc(message)}</b><br>` : "") +
+    (droppedImages
+      ? `<b>${plural(droppedImages, "gespeichertes Bild wurde", "gespeicherte Bilder wurden")} entfernt</b>, ` +
+        `um Speicher freizugeben.<br>`
+      : "") +
     `Alles bleibt auf diesem Gerät — <b>${n}</b> ${n === 1 ? "Zeile" : "Zeilen"}, ` +
-    `<b>${withImages}</b> mit Bild, zusammen <b>${size}</b>. ` +
+    `zusammen <b>${size}</b>. ` +
     `Der Browser gibt dafür rund 5 MB frei; regelmäßig exportieren.`;
 }
 
@@ -985,7 +892,10 @@ function render(){
 const scrollTop = () => window.scrollTo({ top:0, behavior:"smooth" });
 
 render();
-showStorage();
+// Altbestände an Bildern sofort zurückschreiben, sonst belegen sie den
+// Speicher weiter, obwohl sie nirgends mehr auftauchen.
+if(droppedImages) writeThrough();
+else showStorage();
 
 })();
 </script>
