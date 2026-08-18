@@ -405,9 +405,8 @@ const money = n => (n == null || !Number.isFinite(n))
 
 /* ---------- Dauer ----------
    Eingetragen wird, wie es am Tresen gesagt wird ("20 Min.", "1:30",
-   "1 Std 30", "2 Tage"); angezeigt wird durchgehend in Stunden.
-   Eine blanke Zahl gilt als Stunden — das Feld zeigt ja Stunden an,
-   also meint eine Korrektur von "1,5 Std." auf "2" auch zwei Stunden. */
+   "1 Std 30", "1,5 Std", "2 Tage"); angezeigt wird in vollen Minuten,
+   mit vorangestellten Stunden ab einer Stunde: "1 Std. 30 Min." */
 function parseDuration(input){
   if(input == null) return null;
   const s = String(input).trim().toLowerCase();
@@ -436,9 +435,14 @@ function parseDuration(input){
     let f = einheit ? factor(einheit) : null;
     if(einheit && f === null) return null;        // unbekannte Einheit → Text belassen
     if(f === null){
-      // "1 Std 30" — die nachgestellte blanke Zahl sind Minuten,
-      // eine allein stehende blanke Zahl sind Stunden.
-      f = lastWasHours ? 1 / 60 : 1;
+      // Zahl ohne Einheit: nach einer Stundenangabe sind es Minuten
+      // ("1 Std 30"). Sonst gelten ganze Zahlen als Minuten ("20", "90")
+      // und Kommazahlen als Stunden ("1,5") — eineinhalb Minuten meint
+      // niemand, eineinhalb Stunden dagegen schon.
+      // Entscheidend ist die Schreibweise, nicht der Wert: "2,0" ist als
+      // Kommazahl getippt und meint Stunden, obwohl 2,0 ganzzahlig ist.
+      const alsKommazahl = /[.,]/.test(m[1]);
+      f = (lastWasHours || !alsKommazahl) ? 1 / 60 : 1;
     }
     lastWasHours = f === 1;
     total += wert * f;
@@ -447,10 +451,15 @@ function parseDuration(input){
   return found ? total : null;
 }
 
+// In vollen Minuten rechnen — dadurch bleibt die Anzeige beim wiederholten
+// Bestätigen unverändert und driftet nicht durch Rundung ab.
 function formatDuration(hours){
   if(hours == null || !Number.isFinite(hours)) return "";
-  const gerundet = Math.round(hours * 100) / 100;
-  return gerundet.toLocaleString("de-DE", { maximumFractionDigits: 2 }) + " Std.";
+  const min = Math.round(hours * 60);
+  const std = Math.floor(min / 60), rest = min % 60;
+  if(std === 0) return `${rest} Min.`;
+  if(rest === 0) return `${std} Std.`;
+  return `${std} Std. ${rest} Min.`;
 }
 
 // Freitext in Stunden umschreiben; was sich nicht deuten lässt
@@ -520,7 +529,7 @@ function rowHTML(e, opts){
 
     <div class="r-meta">
       <input class="f f-note" data-f="note" data-id="${e.id}" value="${esc(e.note)}" placeholder="Notiz">
-      <input class="f f-time" data-f="time" data-id="${e.id}" value="${esc(e.time)}" placeholder="Dauer in Std.">
+      <input class="f f-time" data-f="time" data-id="${e.id}" value="${esc(e.time)}" placeholder="Dauer in Min.">
       ${opts.showCategory && cat ? `<div class="r-cat">${esc(cat.name)}</div>` : ""}
     </div>
 
