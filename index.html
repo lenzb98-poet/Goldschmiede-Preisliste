@@ -536,16 +536,8 @@ function rowHTML(e, opts){
    ============================================================ */
 function renderHome(){
   const recent = data.recent.map(entryById).filter(Boolean);
-  let html = "";
 
-  if(recent.length){
-    html += `<section class="section">
-      <div class="section-head"><h2>Zuletzt benutzt</h2></div>
-      <div class="rows">${recent.map(e => rowHTML(e, { showCategory:true })).join("")}</div>
-    </section>`;
-  }
-
-  html += `<section class="section">
+  let html = `<section class="section">
     <div class="section-head">
       <h2>Kategorien</h2>
       <span class="count">${plural(data.entries.length, "Eintrag", "Einträge")} insgesamt</span>
@@ -556,6 +548,13 @@ function renderHome(){
       <button class="btn" id="addCat">Anlegen</button>
     </div>
   </section>`;
+
+  if(recent.length){
+    html += `<section class="section">
+      <div class="section-head"><h2>Zuletzt benutzt</h2></div>
+      <div class="rows">${recent.map(e => rowHTML(e, { showCategory:true })).join("")}</div>
+    </section>`;
+  }
 
   app.innerHTML = html;
   wireHome();
