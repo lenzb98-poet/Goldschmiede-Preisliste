@@ -281,14 +281,77 @@
     .rowtools{justify-content:flex-start;}
     .confirm{justify-content:flex-start;}
   }
+
+  /* hidden muss gewinnen: .gate setzt display:flex und würde das Attribut
+     sonst aussticht — die Schicht bliebe unsichtbar liegen und finge alle
+     Klicks ab. */
+  [hidden]{display:none !important;}
+
+  /* ---------- Anmeldung ---------- */
+  .gate{
+    position:fixed;inset:0;z-index:60;background:var(--bg);
+    display:flex;align-items:center;justify-content:center;padding:24px;
+  }
+  .gate-box{width:100%;max-width:360px;text-align:center;}
+  .gate-box h2{
+    margin:0 0 6px;font-size:1.15rem;font-weight:600;
+    letter-spacing:.09em;text-transform:uppercase;color:var(--gold-deep);
+  }
+  .gate-box p{margin:0 0 22px;font-size:.86rem;color:var(--ink-soft);}
+  .gate-box input{
+    width:100%;height:var(--tap);padding:0 18px;margin-bottom:12px;
+    font-size:1.1rem;text-align:center;
+    background:var(--paper);border:1.5px solid var(--line-firm);border-radius:var(--r);
+  }
+  .gate-box input:focus{outline:none;border-color:var(--gold);box-shadow:0 0 0 4px var(--gold-wash);}
+  .gate-box .btn{width:100%;}
+  .gate-fehler{
+    margin-top:14px;font-size:.88rem;color:var(--warn);font-weight:600;min-height:1.2em;
+  }
+
+  /* ---------- Statuszeile ---------- */
+  .status{
+    position:fixed;left:50%;transform:translateX(-50%);
+    bottom:18px;z-index:50;
+    padding:11px 20px;border-radius:12px;
+    font-size:.9rem;font-weight:600;
+    background:var(--ink);color:#fff;
+    box-shadow:0 4px 18px rgba(0,0,0,.22);
+    opacity:0;pointer-events:none;transition:opacity .2s;
+    max-width:90vw;
+  }
+  .status.an{opacity:1;}
+  .status.schlimm{background:var(--warn);}
+
+  /* ---------- Kopfleiste ---------- */
+  .abmelden{
+    position:absolute;top:20px;right:0;
+    font-size:.8rem;color:var(--ink-soft);
+    padding:8px 12px;border-radius:9px;
+  }
+  .abmelden:hover{background:var(--gold-wash);color:var(--gold-deep);}
+  .masthead{position:relative;}
+
+  .laedt{text-align:center;color:var(--ink-soft);padding:40px 16px;}
 </style>
 </head>
 <body>
 
-<div class="wrap">
+<div class="gate" id="gate" hidden>
+  <div class="gate-box">
+    <h2>Preisliste</h2>
+    <p>Werkstatt&shy;passwort eingeben</p>
+    <input type="password" id="passwort" placeholder="Passwort" autocomplete="current-password" enterkeyhint="go">
+    <button class="btn" id="anmelden">Öffnen</button>
+    <div class="gate-fehler" id="gateFehler"></div>
+  </div>
+</div>
+
+<div class="wrap" id="hauptbereich" hidden>
   <div class="masthead">
     <h1>Preisliste</h1>
     <p>Nachschlagen &middot; anpassen &middot; zeigen</p>
+    <button class="abmelden" id="abmelden">abmelden</button>
   </div>
 
   <div class="searchbar">
@@ -311,80 +374,32 @@
   </section>
 </div>
 
+<div class="status" id="status"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.58.0/dist/umd/supabase.js"></script>
 <script>
 (function(){
 "use strict";
 
 /* ============================================================
-   Speicher
+   Anbindung
    ============================================================ */
-const KEY = "goldschmiede_preisliste_v1";
+const SUPABASE_URL  = "https://oxczrzzidgqdjokswavy.supabase.co";
+const SUPABASE_KEY  = "sb_publishable_c_ckPY_D3LWR1GpvD6eVUg_pdL-FgvZ";
+
+// Angemeldet wird immer dasselbe Werkstattkonto — am Tresen soll nur ein
+// Passwort getippt werden. Die Kennung steht deshalb fest. Sie muss mit der
+// Zugriffsregel in der Datenbank übereinstimmen (public.ist_werkstatt).
+const KONTO = "werkstatt@feuer-und-flamme.de";
+
 const RECENT_MAX = 6;
 const OLD_DAYS = 180;         // ab hier Hinweis: Goldpreis prüfen?
 const WORK_DAY_HOURS = 8;     // "2 Tage" -> 16 Std.
 
-const uid = () => "id-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 9);
-
-function freshData(){
-  return {
-    categories: ["Löten","Reparatur","Anfertigung","Umarbeitung"].map(n => ({ id: uid(), name: n })),
-    entries: [],
-    recent: []
-  };
-}
-
-// Bilder wurden entfernt, weil sie als base64 den knappen localStorage füllten.
-// Altbestände werden beim Laden und beim Import weggeworfen — sonst bliebe
-// der Platz belegt, obwohl nichts mehr davon angezeigt wird.
-let droppedImages = 0;
-function stripImages(entries){
-  entries.forEach(e => {
-    if(e && e.image != null){ delete e.image; droppedImages++; }
-  });
-  return entries;
-}
-
-function loadData(){
-  let d;
-  try{
-    const raw = localStorage.getItem(KEY);
-    if(!raw) return freshData();
-    d = JSON.parse(raw);
-    if(!Array.isArray(d.categories) || !Array.isArray(d.entries)) return freshData();
-    if(!Array.isArray(d.recent)) d.recent = [];
-  }catch(err){
-    console.error("Daten konnten nicht gelesen werden:", err);
-    return freshData();
-  }
-
-  // Umschreiben getrennt absichern: eine gelesene Liste darf niemals
-  // wegen eines Fehlers in der Umstellung verlorengehen.
-  try{
-    stripImages(d.entries);
-    d.entries.forEach(e => { if(e && e.time) e.time = normalizeDuration(e.time); });
-  }catch(err){
-    console.error("Umstellung übersprungen:", err);
-  }
-  return d;
-}
-
-let data = loadData();
-
-let writeTimer = null;
-function save(){
-  clearTimeout(writeTimer);
-  writeTimer = setTimeout(writeThrough, 150);
-}
-function writeThrough(){
-  clearTimeout(writeTimer);
-  try{
-    localStorage.setItem(KEY, JSON.stringify(data));
-    showStorage();
-  }catch(err){
-    showStorage("Speichern fehlgeschlagen — der Speicher ist voll. " +
-      "Bitte exportieren und nicht mehr benötigte Zeilen löschen.");
-  }
-}
+// Der Schlüssel oben ist der öffentliche. Er darf im Quelltext stehen;
+// geschützt wird nichts durch ihn, sondern durch die Zugriffsregeln (RLS)
+// in der Datenbank: ohne Anmeldung als Werkstattkonto ist alles gesperrt.
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 /* ============================================================
    Kleine Helfer
@@ -397,7 +412,6 @@ function toNumber(input){
   if(!s) return null;
   const hasComma = s.includes(","), hasDot = s.includes(".");
   if(hasComma && hasDot){
-    // der hintere Trenner ist der Dezimaltrenner
     s = s.lastIndexOf(",") > s.lastIndexOf(".")
       ? s.replace(/\./g, "").replace(",", ".")
       : s.replace(/,/g, "");
@@ -412,6 +426,20 @@ function toNumber(input){
 
 const money = n => (n == null || !Number.isFinite(n))
   ? "" : n.toLocaleString("de-DE", { minimumFractionDigits:2, maximumFractionDigits:2 });
+
+function dateShort(iso){
+  const d = iso ? new Date(iso) : null;
+  return (d && !isNaN(d)) ? d.toLocaleDateString("de-DE",{day:"2-digit",month:"2-digit",year:"numeric"}) : "";
+}
+function ageInDays(iso){
+  const d = iso ? new Date(iso) : null;
+  return (d && !isNaN(d)) ? (Date.now() - d.getTime()) / 864e5 : Infinity;
+}
+
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c =>
+  ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
+
+const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
 
 /* ---------- Dauer ----------
    Eingetragen wird in Stunden ("1,5", "0,25"); andere Schreibweisen
@@ -477,35 +505,93 @@ function normalizeDuration(text){
   return h === null ? String(text ?? "").trim() : formatDuration(h);
 }
 
-function dateShort(iso){
-  const d = iso ? new Date(iso) : null;
-  return (d && !isNaN(d)) ? d.toLocaleDateString("de-DE",{day:"2-digit",month:"2-digit",year:"numeric"}) : "";
-}
-function ageInDays(iso){
-  const d = iso ? new Date(iso) : null;
-  return (d && !isNaN(d)) ? (Date.now() - d.getTime()) / 864e5 : Infinity;
+/* ============================================================
+   Statusmeldungen
+   ============================================================ */
+const statusEl = document.getElementById("status");
+let statusTimer = null;
+function melde(text, schlimm){
+  clearTimeout(statusTimer);
+  statusEl.textContent = text;
+  statusEl.classList.toggle("schlimm", !!schlimm);
+  statusEl.classList.add("an");
+  statusTimer = setTimeout(() => statusEl.classList.remove("an"), schlimm ? 6000 : 1800);
 }
 
-const esc = s => String(s ?? "").replace(/[&<>"']/g, c =>
-  ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
+// Jeder Schreibvorgang läuft hier durch. Ein fehlgeschlagener Preis darf
+// nicht stillschweigend verschwinden — am Tresen wäre der Preis sonst
+// scheinbar geändert und in Wahrheit nicht.
+async function schreibe(beschreibung, aktion){
+  try{
+    const { data, error } = await aktion();
+    if(error) throw error;
+    return data;
+  }catch(err){
+    console.error(beschreibung, err);
+    melde(beschreibung + " fehlgeschlagen: " + (err.message || err), true);
+    throw err;
+  }
+}
 
-const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
+// schreibe() hat den Fehler bereits gemeldet und weitergeworfen, damit der
+// Aufrufer abbrechen kann. Bedienhandler hängen hier durch, sonst bleibt
+// eine unbehandelte Rejection zurück.
+const handler = fn => (...a) => Promise.resolve(fn(...a)).catch(() => {});
+
+/* ============================================================
+   Daten
+   ============================================================ */
+let data = { categories: [], entries: [] };
 
 const catById   = id => data.categories.find(c => c.id === id);
 const entryById = id => data.entries.find(e => e.id === id);
 const entriesOf = id => data.entries.filter(e => e.categoryId === id);
 
-function markUsed(id){
-  if(!entryById(id)) return;
-  data.recent = [id, ...data.recent.filter(r => r !== id)].slice(0, RECENT_MAX);
-  save();
+// Die Datenbank nennt die Dauer "duration" ("time" ist in SQL belegt)
+// und schreibt in Schlangenschrift. Hier wird einmal übersetzt.
+const ausDb = r => ({
+  id: r.id,
+  categoryId: r.category_id,
+  name: r.name || "",
+  price: r.price == null ? null : Number(r.price),
+  priceDate: r.price_date,
+  note: r.note || "",
+  time: r.duration || "",
+  position: r.position,
+  lastUsedAt: r.last_used_at
+});
+
+async function ladeAlles(){
+  const [k, z] = await Promise.all([
+    sb.from("categories").select("*").order("position"),
+    sb.from("entries").select("*").order("position")
+  ]);
+  if(k.error) throw k.error;
+  if(z.error) throw z.error;
+  data.categories = k.data.map(c => ({ id:c.id, name:c.name, position:c.position }));
+  data.entries    = z.data.map(ausDb);
 }
+
+async function markUsed(id){
+  const e = entryById(id);
+  if(!e) return;
+  const jetzt = new Date().toISOString();
+  if(e.lastUsedAt && (Date.now() - new Date(e.lastUsedAt).getTime()) < 60000) return; // nicht bei jedem Tastendruck
+  e.lastUsedAt = jetzt;
+  const { error } = await sb.from("entries").update({ last_used_at: jetzt }).eq("id", id);
+  if(error) console.error("Zuletzt benutzt", error);
+}
+
+const zuletztBenutzt = () => data.entries
+  .filter(e => e.lastUsedAt)
+  .sort((a,b) => new Date(b.lastUsedAt) - new Date(a.lastUsedAt))
+  .slice(0, RECENT_MAX);
 
 /* ============================================================
    Ansichtszustand
    ============================================================ */
 let view = { screen:"home", categoryId:null };
-let editingCat = null;     // Kategorie-ID, die gerade umbenannt wird
+let editingCat = null;
 let query = "";
 
 const app = document.getElementById("app");
@@ -556,7 +642,7 @@ function rowHTML(e, opts){
    Startseite
    ============================================================ */
 function renderHome(){
-  const recent = data.recent.map(entryById).filter(Boolean);
+  const recent = zuletztBenutzt();
 
   let html = `<section class="section">
     <div class="section-head">
@@ -604,7 +690,7 @@ function catHTML(c){
 
 function wireHome(){
   app.querySelectorAll("[data-open]").forEach(b => b.onclick = () => {
-    view = { screen:"category", categoryId:b.dataset.open };
+    view = { screen:"category", categoryId: b.dataset.open };
     editingCat = null;
     render(); scrollTop();
   });
@@ -620,10 +706,10 @@ function wireHome(){
     editingCat = null; render();
   });
 
-  app.querySelectorAll("[data-savecat]").forEach(b => b.onclick = () => saveCat(b.dataset.savecat));
+  app.querySelectorAll("[data-savecat]").forEach(b => b.onclick = handler(() => saveCat(b.dataset.savecat)));
   app.querySelectorAll("[data-catname]").forEach(f => {
     f.onkeydown = ev => {
-      if(ev.key === "Enter") saveCat(f.dataset.catname);
+      if(ev.key === "Enter") handler(saveCat)(f.dataset.catname);
       if(ev.key === "Escape"){ editingCat = null; render(); }
     };
   });
@@ -632,38 +718,47 @@ function wireHome(){
     const id = b.dataset.delcat, cat = catById(id), n = entriesOf(id).length;
     const box = b.closest(".cat-editor-row");
     box.innerHTML = `<div class="confirm">
-        <span>„${esc(cat.name)}“${n ? ` mit ${n} ${n === 1 ? "Eintrag" : "Einträgen"}` : ""} löschen?</span>
+        <span>„${esc(cat.name)}“${n ? ` mit ${plural(n, "Eintrag", "Einträgen")}` : ""} löschen?</span>
         <button class="yes">Ja, löschen</button><button class="no">Abbrechen</button>
       </div>`;
     box.querySelector(".no").onclick = () => render();
-    box.querySelector(".yes").onclick = () => {
+    box.querySelector(".yes").onclick = handler(async () => {
+      await schreibe("Kategorie löschen", () => sb.from("categories").delete().eq("id", id));
       data.categories = data.categories.filter(c => c.id !== id);
-      data.entries    = data.entries.filter(e => e.categoryId !== id);
-      data.recent     = data.recent.filter(r => entryById(r));
-      editingCat = null; save(); render();
-    };
+      data.entries    = data.entries.filter(e => e.categoryId !== id);   // die Datenbank löscht mit
+      editingCat = null; render(); zeigeStand();
+      melde("Kategorie gelöscht");
+    });
   });
 
   const newCat = document.getElementById("newCat");
-  const add = () => {
+  const add = handler(async () => {
     const name = newCat.value.trim();
     if(!name) return;
-    data.categories.push({ id: uid(), name });
-    save(); render();
+    newCat.value = "";
+    const position = data.categories.length
+      ? Math.max(...data.categories.map(c => c.position ?? 0)) + 1 : 0;
+    const reihe = await schreibe("Kategorie anlegen", () =>
+      sb.from("categories").insert({ name, position }).select().single());
+    data.categories.push({ id: reihe.id, name: reihe.name, position: reihe.position });
+    render(); zeigeStand();
     const again = document.getElementById("newCat");
     if(again) again.focus();
-  };
+  });
   document.getElementById("addCat").onclick = add;
   newCat.onkeydown = ev => { if(ev.key === "Enter") add(); };
 }
 
-function saveCat(id){
+async function saveCat(id){
   const field = app.querySelector(`[data-catname="${id}"]`);
   const name = field ? field.value.trim() : "";
   const cat = catById(id);
-  if(cat && name) cat.name = name;
+  if(cat && name && name !== cat.name){
+    await schreibe("Umbenennen", () => sb.from("categories").update({ name }).eq("id", id));
+    cat.name = name;
+  }
   editingCat = null;
-  save(); render();
+  render();
 }
 
 /* ============================================================
@@ -688,12 +783,17 @@ function renderCategory(id){
   document.getElementById("back").onclick = () => {
     view = { screen:"home", categoryId:null }; render(); scrollTop();
   };
-  document.getElementById("addRow").onclick = () => {
-    const e = { id:uid(), categoryId:id, name:"", price:null, priceDate:null, note:"", time:"" };
-    data.entries.push(e); save(); render();
-    const field = app.querySelector(`.f-name[data-id="${e.id}"]`);
+  document.getElementById("addRow").onclick = handler(async () => {
+    const geschwister = entriesOf(id);
+    const position = geschwister.length
+      ? Math.max(...geschwister.map(e => e.position ?? 0)) + 1 : 0;
+    const reihe = await schreibe("Zeile anlegen", () =>
+      sb.from("entries").insert({ category_id: id, position }).select().single());
+    data.entries.push(ausDb(reihe));
+    render(); zeigeStand();
+    const field = app.querySelector(`.f-name[data-id="${reihe.id}"]`);
     if(field){ field.focus(); field.scrollIntoView({ block:"center", behavior:"smooth" }); }
-  };
+  });
   wireRows();
 }
 
@@ -730,7 +830,6 @@ function renderSearch(){
    Zeilen verdrahten
    ============================================================ */
 function wireRows(){
-  // Textfelder: bei Verlassen bzw. Änderung sichern
   app.querySelectorAll(".f").forEach(f => {
     f.addEventListener("change", commitField);
     f.addEventListener("blur", commitField);
@@ -743,15 +842,20 @@ function wireRows(){
 
   app.querySelectorAll("[data-stage]").forEach(b => b.onclick = () => openStage(b.dataset.stage));
 
-  app.querySelectorAll("[data-copy]").forEach(b => b.onclick = () => {
+  app.querySelectorAll("[data-copy]").forEach(b => b.onclick = handler(async () => {
     const e = entryById(b.dataset.copy);
     if(!e) return;
-    const copy = Object.assign({}, e, { id: uid(), name: e.name ? e.name + " (Kopie)" : "" });
-    data.entries.splice(data.entries.indexOf(e) + 1, 0, copy);
-    save(); render();
-    const field = app.querySelector(`.f-name[data-id="${copy.id}"]`);
+    const reihe = await schreibe("Verdoppeln", () => sb.from("entries").insert({
+      category_id: e.categoryId,
+      name: e.name ? e.name + " (Kopie)" : "",
+      price: e.price, note: e.note, duration: e.time,
+      position: (e.position ?? 0) + 1
+    }).select().single());
+    data.entries.splice(data.entries.indexOf(e) + 1, 0, ausDb(reihe));
+    render(); zeigeStand();
+    const field = app.querySelector(`.f-name[data-id="${reihe.id}"]`);
     if(field){ field.focus(); field.select(); }
-  });
+  }));
 
   // Löschen mit Rückfrage direkt in der Zeile — kein extra Fenster
   app.querySelectorAll("[data-del]").forEach(b => b.onclick = () => {
@@ -764,48 +868,59 @@ function wireRows(){
         <button class="yes">Ja</button><button class="no">Nein</button>
       </div>`;
     tools.querySelector(".no").onclick = () => { tools.innerHTML = restore; wireRows(); };
-    tools.querySelector(".yes").onclick = () => {
+    tools.querySelector(".yes").onclick = handler(async () => {
+      await schreibe("Löschen", () => sb.from("entries").delete().eq("id", id));
       data.entries = data.entries.filter(x => x.id !== id);
-      data.recent  = data.recent.filter(r => r !== id);
-      save(); render();
-    };
+      render(); zeigeStand();
+      melde("Zeile gelöscht");
+    });
   });
 }
 
-function commitField(ev){
+async function commitField(ev){
   const f = ev.target;
   const e = entryById(f.dataset.id);
   if(!e) return;
   const key = f.dataset.f;
+  let patch = null;
 
   if(key === "price"){
     const raw = f.value.trim();
+    let neu;
     if(!raw){
-      e.price = null; e.priceDate = null;
+      neu = null;
     }else{
       const n = toNumber(raw);
       if(n == null){                       // unlesbar → alten Wert zurückschreiben
         f.value = e.price != null ? money(e.price) : "";
         return;
       }
-      if(n !== e.price){                   // Datum nur bei echter Änderung neu setzen
-        e.price = n;
-        e.priceDate = new Date().toISOString();
-      }
+      neu = n;
     }
-    f.value = e.price != null ? money(e.price) : "";
-    refreshStamp(e);
+    f.value = neu != null ? money(neu) : "";
+    if(neu === e.price) return;
+    patch = { price: neu };
+
   }else if(key === "time"){
-    const val = normalizeDuration(f.value);   // "90 Min." → "1,5 Std."
+    const val = normalizeDuration(f.value);   // "1,5" → "1 Std. 30 Min."
     f.value = val;
     if(e.time === val) return;
-    e.time = val;
+    patch = { duration: val };
+
   }else{
     const val = f.value.trim();
     if(e[key] === val) return;
-    e[key] = val;
+    patch = { [key]: val };
   }
-  save();
+
+  // Das Preisdatum vergibt die Datenbank per Trigger. Deshalb die
+  // geschriebene Zeile zurücklesen, statt hier ein Datum zu erfinden.
+  try{
+    const reihe = await schreibe("Speichern", () =>
+      sb.from("entries").update(patch).eq("id", e.id).select().single());
+    Object.assign(e, ausDb(reihe));
+    refreshStamp(e);
+  }catch(_){ /* bereits gemeldet; der Wert bleibt im Feld stehen */ }
 }
 
 // nur die Datumszeile auffrischen — kein Neuaufbau, der Fokus geht nicht verloren
@@ -872,14 +987,21 @@ function clearSearch(){
    Export / Import
    ============================================================ */
 document.getElementById("exportBtn").onclick = () => {
-  writeThrough();
+  const inhalt = {
+    exportiert_am: new Date().toISOString(),
+    categories: data.categories.map(c => ({ id:c.id, name:c.name, position:c.position })),
+    entries: data.entries.map(e => ({
+      id:e.id, categoryId:e.categoryId, name:e.name, price:e.price,
+      priceDate:e.priceDate, note:e.note, time:e.time, position:e.position
+    }))
+  };
   const name = `preisliste-${new Date().toISOString().slice(0,10)}.json`;
-  const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type:"application/json" }));
+  const url = URL.createObjectURL(new Blob([JSON.stringify(inhalt, null, 2)], { type:"application/json" }));
   const a = document.createElement("a");
   a.href = url; a.download = name;
   document.body.appendChild(a); a.click(); a.remove();
   URL.revokeObjectURL(url);
-  showStorage(`Gesichert als ${name}.`);
+  zeigeStand(`Gesichert als ${name}.`);
 };
 
 document.getElementById("importBtn").onclick = () => document.getElementById("importFile").click();
@@ -896,18 +1018,16 @@ document.getElementById("importFile").addEventListener("change", ev => {
       incoming = JSON.parse(res.target.result);
       if(!Array.isArray(incoming.categories) || !Array.isArray(incoming.entries))
         throw new Error("Die Datei enthält keine Preisliste.");
-      // Ältere Sicherungen können noch Bilder enthalten — die bleiben draußen.
-      stripImages(incoming.entries);
     }catch(err){
-      return showStorage("Import fehlgeschlagen: " + err.message);
+      return zeigeStand("Import fehlgeschlagen: " + err.message);
     }
-    askImportMode(incoming);
+    frageImportArt(incoming);
   };
   reader.readAsText(file);
 });
 
 // Rückfrage inline im Datenfeld statt als Systemdialog
-function askImportMode(incoming){
+function frageImportArt(incoming){
   const note = document.getElementById("dataNote");
   note.innerHTML = `<div class="confirm" style="color:var(--ink);justify-content:flex-start">
       <span><b>${incoming.entries.length}</b> ${incoming.entries.length === 1 ? "Zeile" : "Zeilen"} gefunden. Wie einfügen?</span>
@@ -918,56 +1038,90 @@ function askImportMode(incoming){
       <button class="btn ghost" id="impCancel">Abbrechen</button>
     </div>`;
 
-  document.getElementById("impCancel").onclick = () => showStorage("Import abgebrochen.");
+  document.getElementById("impCancel").onclick = () => zeigeStand("Import abgebrochen.");
+  document.getElementById("impReplace").onclick = () => importiere(incoming, true);
+  document.getElementById("impMerge").onclick   = () => importiere(incoming, false);
+}
 
-  document.getElementById("impReplace").onclick = () => {
-    data = {
-      categories: incoming.categories,
-      entries: incoming.entries,
-      recent: Array.isArray(incoming.recent) ? incoming.recent : []
-    };
-    writeThrough();
+async function importiere(incoming, ersetzen){
+  try{
+    zeigeStand("Import läuft…");
+
+    if(ersetzen){
+      // Kategorien löschen nimmt ihre Zeilen mit (Fremdschlüssel mit Kaskade)
+      const alte = data.categories.map(c => c.id);
+      if(alte.length){
+        await schreibe("Leeren", () => sb.from("categories").delete().in("id", alte));
+      }
+      data.categories = []; data.entries = [];
+    }
+
+    // Kategorien anlegen bzw. bestehende nach Namen wiederverwenden
+    const zuordnung = {};
+    for(const c of incoming.categories){
+      const gleich = data.categories.find(x => x.name.toLowerCase() === String(c.name).toLowerCase());
+      if(gleich){ zuordnung[c.id] = gleich.id; continue; }
+      const position = data.categories.length
+        ? Math.max(...data.categories.map(x => x.position ?? 0)) + 1 : 0;
+      const reihe = await schreibe("Kategorie anlegen", () =>
+        sb.from("categories").insert({ name: String(c.name), position }).select().single());
+      data.categories.push({ id: reihe.id, name: reihe.name, position: reihe.position });
+      zuordnung[c.id] = reihe.id;
+    }
+
+    // Zeilen in einem Rutsch. Das Preisdatum aus der Datei wird
+    // mitgenommen, damit der Goldpreis-Hinweis nicht zurückgesetzt wird.
+    const neue = incoming.entries
+      .map((e, i) => ({
+        category_id: zuordnung[e.categoryId],
+        name: String(e.name ?? ""),
+        price: e.price == null ? null : Number(e.price),
+        note: String(e.note ?? ""),
+        duration: normalizeDuration(e.time ?? ""),
+        position: Number.isFinite(e.position) ? e.position : i
+      }))
+      .filter(r => r.category_id);
+
+    if(neue.length){
+      const reihen = await schreibe("Zeilen einfügen", () =>
+        sb.from("entries").insert(neue).select());
+      reihen.forEach(r => data.entries.push(ausDb(r)));
+
+      // Der Trigger hat eben "jetzt" gestempelt. Wo die Datei ein älteres
+      // Datum mitbringt, wird es nachgetragen — sonst sähe jeder importierte
+      // Preis frisch aus, obwohl er alt ist.
+      const nachtrag = reihen
+        .map((r, i) => ({ id: r.id, datum: incoming.entries[i] && incoming.entries[i].priceDate }))
+        .filter(x => x.datum);
+      for(const x of nachtrag){
+        await sb.from("entries").update({ price_date: x.datum }).eq("id", x.id);
+        const e = entryById(x.id);
+        if(e) e.priceDate = x.datum;
+      }
+    }
+
     view = { screen:"home", categoryId:null };
     render();
-    showStorage(`Ersetzt — ${plural(data.entries.length, "Zeile", "Zeilen")} übernommen.`);
-  };
-
-  document.getElementById("impMerge").onclick = () => {
-    const map = {};
-    incoming.categories.forEach(c => {
-      const same = data.categories.find(x => x.name.toLowerCase() === String(c.name).toLowerCase());
-      if(same){ map[c.id] = same.id; }
-      else { const id = uid(); map[c.id] = id; data.categories.push({ id, name:c.name }); }
-    });
-    let added = 0;
-    incoming.entries.forEach(e => {
-      data.entries.push(Object.assign({}, e, { id: uid(), categoryId: map[e.categoryId] || e.categoryId }));
-      added++;
-    });
-    writeThrough();
-    view = { screen:"home", categoryId:null };
-    render();
-    showStorage(`Dazugenommen — ${plural(added, "Zeile", "Zeilen")} ergänzt.`);
-  };
+    zeigeStand(ersetzen
+      ? `Ersetzt — ${plural(data.entries.length, "Zeile", "Zeilen")} übernommen.`
+      : `Dazugenommen — ${plural(neue.length, "Zeile", "Zeilen")} ergänzt.`);
+  }catch(err){
+    zeigeStand("Import abgebrochen, siehe Meldung oben.");
+  }
 }
 
 /* ============================================================
-   Speicherhinweis
+   Hinweiszeile unter den Datenknöpfen
    ============================================================ */
-function showStorage(message){
+function zeigeStand(nachricht){
   const note = document.getElementById("dataNote");
-  const bytes = new Blob([JSON.stringify(data)]).size;
-  const size = bytes > 1048576 ? (bytes / 1048576).toFixed(1) + " MB" : Math.round(bytes / 1024) + " KB";
   const n = data.entries.length;
   note.innerHTML =
-    (message ? `<b>${esc(message)}</b><br>` : "") +
-    (droppedImages
-      ? `<b>${plural(droppedImages, "gespeichertes Bild wurde", "gespeicherte Bilder wurden")} entfernt</b>, ` +
-        `um Speicher freizugeben.<br>`
-      : "") +
-    `Alles bleibt auf diesem Gerät — <b>${n}</b> ${n === 1 ? "Zeile" : "Zeilen"}, ` +
-    `zusammen <b>${size}</b>. ` +
-    `Der Browser gibt dafür rund 5 MB frei; regelmäßig exportieren.`;
+    (nachricht ? `<b>${esc(nachricht)}</b><br>` : "") +
+    `Gespeichert bei Supabase — <b>${n}</b> ${n === 1 ? "Zeile" : "Zeilen"} in ` +
+    `<b>${plural(data.categories.length, "Kategorie", "Kategorien")}</b>. ` +
+    `Änderungen sind sofort auf allen Geräten sichtbar. ` +
+    `Ein Export bleibt trotzdem sinnvoll, falls einmal etwas versehentlich gelöscht wird.`;
 }
 
 /* ============================================================
@@ -980,13 +1134,75 @@ function render(){
 }
 const scrollTop = () => window.scrollTo({ top:0, behavior:"smooth" });
 
-render();
-// Altbestände an Bildern sofort zurückschreiben, sonst belegen sie den
-// Speicher weiter, obwohl sie nirgends mehr auftauchen.
-if(droppedImages) writeThrough();
-else showStorage();
+/* ============================================================
+   Anmeldung
+   ============================================================ */
+const gate       = document.getElementById("gate");
+const hauptteil  = document.getElementById("hauptbereich");
+const passwort   = document.getElementById("passwort");
+const gateFehler = document.getElementById("gateFehler");
+
+function zeigeAnmeldung(){
+  gate.hidden = false;
+  hauptteil.hidden = true;
+  passwort.value = "";
+  setTimeout(() => passwort.focus(), 50);
+}
+
+async function zeigeListe(){
+  gate.hidden = true;
+  hauptteil.hidden = false;
+  app.innerHTML = `<div class="laedt">Preisliste wird geladen&hellip;</div>`;
+  try{
+    await ladeAlles();
+    render();
+    zeigeStand();
+  }catch(err){
+    console.error(err);
+    app.innerHTML = `<div class="blank">Die Preisliste konnte nicht geladen werden.<br>${esc(err.message || err)}</div>`;
+  }
+}
+
+async function anmelden(){
+  const pw = passwort.value;
+  if(!pw){ gateFehler.textContent = "Bitte das Passwort eingeben."; return; }
+  gateFehler.textContent = "";
+  const knopf = document.getElementById("anmelden");
+  knopf.disabled = true; knopf.textContent = "Einen Moment…";
+  const { error } = await sb.auth.signInWithPassword({ email: KONTO, password: pw });
+  knopf.disabled = false; knopf.textContent = "Öffnen";
+  if(error){
+    gateFehler.textContent = /invalid/i.test(error.message)
+      ? "Das Passwort stimmt nicht."
+      : "Anmeldung fehlgeschlagen: " + error.message;
+    passwort.select();
+    return;
+  }
+  zeigeListe();
+}
+
+document.getElementById("anmelden").onclick = anmelden;
+passwort.onkeydown = ev => { if(ev.key === "Enter") anmelden(); };
+
+document.getElementById("abmelden").onclick = async () => {
+  await sb.auth.signOut();
+  data = { categories: [], entries: [] };
+  view = { screen:"home", categoryId:null };
+  query = ""; searchField.value = "";
+  searchBar.classList.remove("searching");
+  zeigeAnmeldung();
+};
+
+// Beim Start: bestehende Sitzung weiterverwenden, sonst nach dem Passwort
+// fragen. Am Tresen bleibt das Gerät damit angemeldet.
+(async () => {
+  const { data: sitzung } = await sb.auth.getSession();
+  if(sitzung && sitzung.session) zeigeListe();
+  else zeigeAnmeldung();
+})();
 
 })();
+
 </script>
 </body>
 </html>
