@@ -141,17 +141,44 @@
     background:var(--paper);border:1.5px solid var(--line);
     border-radius:var(--r);padding:14px;
     display:grid;
-    grid-template-columns:minmax(0,1fr) 208px;
+    grid-template-columns:76px minmax(0,1fr) 208px;
     grid-template-rows:auto auto;
     column-gap:16px;row-gap:8px;align-items:start;
     transition:border-color .18s,background-color .5s;
   }
-  .row > .r-name     {grid-column:1;grid-row:1;align-self:center;}
-  .row > .price-field{grid-column:2;grid-row:1;align-self:center;}
-  .row > .r-meta     {grid-column:1;grid-row:2;}
-  .row > .r-side     {grid-column:2;grid-row:2;}
+  .row > .thumb      {grid-column:1;grid-row:1 / span 2;}
+  .row > .r-name     {grid-column:2;grid-row:1;align-self:center;}
+  .row > .price-field{grid-column:3;grid-row:1;align-self:center;}
+  .row > .r-meta     {grid-column:2;grid-row:2;}
+  .row > .r-side     {grid-column:3;grid-row:2;}
   .row:focus-within{border-color:var(--gold);}
   .row.flash{background:var(--gold-wash);}
+
+  /* Bild */
+  .thumb{
+    width:76px;height:76px;border-radius:12px;overflow:hidden;
+    background:var(--gold-wash);border:1px solid var(--line);
+    display:flex;align-items:center;justify-content:center;position:relative;
+  }
+  .thumb img{width:100%;height:100%;object-fit:cover;display:block;}
+  .thumb .ph{font-size:1.5rem;color:#b9ad95;font-weight:300;}
+  .thumb.laedt::after{
+    content:"";position:absolute;inset:0;
+    background:var(--gold-wash);opacity:.75;
+  }
+  .thumb-btn{position:absolute;inset:0;}
+  .thumb-pick{position:absolute;inset:0;cursor:pointer;}
+  .thumb-pick input{display:none;}
+  /* Bild entfernen: kleines Zeichen auf dem Vorschaubild statt eigener Knopf */
+  .thumb-off{
+    position:absolute;top:2px;right:2px;
+    width:24px;height:24px;border-radius:7px;
+    background:rgba(255,255,255,.92);color:var(--warn);
+    font-size:.8rem;line-height:1;
+    display:flex;align-items:center;justify-content:center;
+    box-shadow:0 1px 3px rgba(0,0,0,.2);
+  }
+  .thumb-off:hover{background:var(--warn);color:#fff;}
 
   /* Textfelder */
   .f{
@@ -230,6 +257,10 @@
     max-width:min(340px,70vw);max-height:34vh;
     border-radius:14px;margin-bottom:26px;object-fit:contain;
   }
+  .stage img{
+    max-width:min(340px,70vw);max-height:34vh;
+    border-radius:14px;margin-bottom:26px;object-fit:contain;
+  }
   .stage .s-name{
     font-size:clamp(1.5rem,4.5vw,2.3rem);font-weight:600;
     line-height:1.2;max-width:16ch;margin-bottom:18px;
@@ -251,6 +282,18 @@
   .stage .s-close:hover{background:var(--gold-wash);}
   .stage .s-hint{position:absolute;bottom:20px;font-size:.78rem;color:#bdb4a2;}
 
+  /* ---------- Bild groß ---------- */
+  .lightbox{
+    position:fixed;inset:0;z-index:90;background:rgba(28,23,16,.88);
+    display:flex;align-items:center;justify-content:center;padding:24px;
+  }
+  .lightbox img{max-width:100%;max-height:88vh;border-radius:12px;}
+  .lightbox button{
+    position:absolute;top:18px;right:20px;
+    width:var(--tap);height:var(--tap);border-radius:12px;
+    font-size:1.6rem;color:#fff;
+  }
+
   /* ---------- Daten ---------- */
   .data{
     margin-top:34px;padding:20px;
@@ -268,14 +311,16 @@
        ein Eingabefeld zieht sonst seine Eigenbreite von rund
        20 Zeichen und drückt die Bezeichnung weg. */
     .row{
-      grid-template-columns:minmax(0,1fr);
+      grid-template-columns:56px minmax(0,1fr);
       grid-template-rows:auto auto auto auto;
-      row-gap:6px;
+      column-gap:10px;row-gap:6px;
     }
-    .row > .r-name     {grid-column:1;grid-row:1;}
-    .row > .price-field{grid-column:1;grid-row:2;}
-    .row > .r-meta     {grid-column:1;grid-row:3;}
-    .row > .r-side     {grid-column:1;grid-row:4;align-items:stretch;}
+    .row > .thumb      {grid-column:1;grid-row:1 / span 2;}
+    .row > .r-name     {grid-column:2;grid-row:1;align-self:center;}
+    .row > .price-field{grid-column:2;grid-row:2;align-self:center;}
+    .row > .r-meta     {grid-column:1 / -1;grid-row:3;}
+    .row > .r-side     {grid-column:1 / -1;grid-row:4;align-items:stretch;}
+    .thumb{width:56px;height:56px;}
     .price-field .f-price{font-size:1.8rem;}
     .stamp{text-align:left;}
     .rowtools{justify-content:flex-start;}
@@ -414,6 +459,14 @@ const KONTO = "werkstatt@feuer-und-flamme.de";
 const RECENT_MAX = 6;
 const OLD_DAYS = 180;         // ab hier Hinweis: Goldpreis prüfen?
 const WORK_DAY_HOURS = 8;     // "2 Tage" -> 16 Std.
+
+// Bilder liegen in der Dateiablage, nicht in der Tabelle. Verkleinert wird
+// trotzdem: die Vorschau lädt schneller und die Ablage bleibt übersichtlich.
+// 1600px reichen, um einer Kundin das Stück am Bildschirm groß zu zeigen.
+const BILDER = "bilder";
+const BILD_MAX = 1600;
+const BILD_Q = 0.82;
+const SIGNIERT_SEK = 60 * 60 * 12;   // Gültigkeit der Bildadressen
 
 // Der Schlüssel oben ist der öffentliche. Er darf im Quelltext stehen;
 // geschützt wird nichts durch ihn, sondern durch die Zugriffsregeln (RLS)
@@ -577,7 +630,8 @@ const ausDb = r => ({
   note: r.note || "",
   time: r.duration || "",
   position: r.position,
-  lastUsedAt: r.last_used_at
+  lastUsedAt: r.last_used_at,
+  imagePath: r.image_path || null
 });
 
 async function ladeAlles(){
@@ -589,6 +643,101 @@ async function ladeAlles(){
   if(z.error) throw z.error;
   data.categories = k.data.map(c => ({ id:c.id, name:c.name, position:c.position }));
   data.entries    = z.data.map(ausDb);
+  await signiereAlle();
+}
+
+/* ---------- Bilder ----------
+   Die Ablage ist nicht öffentlich. Angezeigt wird über unterschriebene
+   Adressen, die nach einiger Zeit verfallen; beim nächsten Öffnen der
+   Seite werden sie neu geholt. */
+async function signiere(pfad){
+  const { data: d, error } = await sb.storage.from(BILDER).createSignedUrl(pfad, SIGNIERT_SEK);
+  if(error){ console.error("Bildadresse", error); return null; }
+  return d.signedUrl;
+}
+
+async function signiereAlle(){
+  const pfade = data.entries.filter(e => e.imagePath).map(e => e.imagePath);
+  if(!pfade.length) return;
+  const { data: liste, error } = await sb.storage.from(BILDER).createSignedUrls(pfade, SIGNIERT_SEK);
+  if(error){ console.error("Bildadressen", error); return; }
+  const karte = {};
+  (liste || []).forEach((x, i) => {
+    const p = x.path || pfade[i];
+    if(x.signedUrl) karte[p] = x.signedUrl;
+  });
+  data.entries.forEach(e => { if(e.imagePath) e.imageUrl = karte[e.imagePath] || null; });
+}
+
+// Vor dem Hochladen verkleinern — ergibt ein Blob, kein base64.
+function verkleinereBild(file){
+  return new Promise((erfuellen, ablehnen) => {
+    const leser = new FileReader();
+    leser.onerror = () => ablehnen(new Error("Die Datei konnte nicht gelesen werden."));
+    leser.onload = ev => {
+      const bild = new Image();
+      bild.onerror = () => ablehnen(new Error("Das Bild konnte nicht geladen werden."));
+      bild.onload = () => {
+        let w = bild.width, h = bild.height;
+        const faktor = Math.min(1, BILD_MAX / Math.max(w, h));
+        w = Math.round(w * faktor); h = Math.round(h * faktor);
+        const cv = document.createElement("canvas");
+        cv.width = w; cv.height = h;
+        const ctx = cv.getContext("2d");
+        ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, w, h);   // Transparenz → weiß
+        ctx.drawImage(bild, 0, 0, w, h);
+        cv.toBlob(
+          b => b ? erfuellen(b) : ablehnen(new Error("Das Bild konnte nicht umgewandelt werden.")),
+          "image/jpeg", BILD_Q);
+      };
+      bild.src = ev.target.result;
+    };
+    leser.readAsDataURL(file);
+  });
+}
+
+async function bildHochladen(eintrag, datei){
+  const kachel = app.querySelector(`.thumb[data-thumb="${eintrag.id}"]`);
+  if(kachel) kachel.classList.add("laedt");
+  try{
+    const blob = await verkleinereBild(datei);
+    const alterPfad = eintrag.imagePath;
+    const pfad = `${eintrag.id}/${Date.now()}.jpg`;
+
+    await schreibe("Bild hochladen", () =>
+      sb.storage.from(BILDER).upload(pfad, blob, { contentType:"image/jpeg" }));
+
+    const reihe = await schreibe("Bild vermerken", () =>
+      sb.from("entries").update({ image_path: pfad }).eq("id", eintrag.id).select().single());
+    Object.assign(eintrag, ausDb(reihe));
+    eintrag.imageUrl = await signiere(pfad);
+
+    // Das ersetzte Bild wegräumen, sonst sammeln sich Karteileichen an.
+    if(alterPfad) await sb.storage.from(BILDER).remove([alterPfad]);
+
+    render();
+    melde("Bild gespeichert");
+  }catch(err){
+    if(kachel) kachel.classList.remove("laedt");
+    if(!/fehlgeschlagen/.test(String(err && err.message))) melde(err.message || String(err), true);
+  }
+}
+
+async function bildEntfernen(eintrag){
+  const pfad = eintrag.imagePath;
+  await schreibe("Bild entfernen", () =>
+    sb.from("entries").update({ image_path: null }).eq("id", eintrag.id));
+  eintrag.imagePath = null; eintrag.imageUrl = null;
+  if(pfad) await sb.storage.from(BILDER).remove([pfad]);
+  render();
+  melde("Bild entfernt");
+}
+
+// Beim Löschen einer Zeile oder Kategorie bleiben die Dateien sonst liegen —
+// die Kaskade in der Datenbank erreicht die Ablage nicht.
+async function bilderWegraeumen(eintraege){
+  const pfade = eintraege.map(e => e.imagePath).filter(Boolean);
+  if(pfade.length) await sb.storage.from(BILDER).remove(pfade);
 }
 
 async function markUsed(id){
@@ -628,8 +777,23 @@ function rowHTML(e, opts){
 
   // DOM-Reihenfolge = Tab-Reihenfolge: Bezeichnung, Preis, Notiz, Dauer.
   // Die Grid-Plätze in der CSS sorgen für die Optik, alle Knöpfe stehen auf tabindex="-1".
+  // Steht ein Pfad in der Zeile, aber die Adresse fehlt, ist das Signieren
+  // schiefgegangen. Dann darf hier kein "+" stehen, sonst überschreibt man
+  // versehentlich ein vorhandenes Bild.
+  const hatBild = !!e.imagePath;
+  const thumb = hatBild
+    ? `<img src="${e.imageUrl || ""}" alt="">
+       ${e.imageUrl ? `<button class="thumb-btn" data-big="${e.id}" tabindex="-1" title="Bild groß zeigen"></button>` : ""}
+       <button class="thumb-off" data-unimg="${e.id}" tabindex="-1" title="Bild entfernen">&#10005;</button>`
+    : `<span class="ph">+</span>
+       <label class="thumb-pick" title="Bild hinzufügen">
+         <input type="file" accept="image/*" data-pick="${e.id}" tabindex="-1">
+       </label>`;
+
   return `
   <div class="row" data-row="${e.id}">
+    <div class="thumb" data-thumb="${e.id}">${thumb}</div>
+
     <div class="r-name">
       <input class="f f-name" data-f="name" data-id="${e.id}" value="${esc(e.name)}" placeholder="Bezeichnung">
     </div>
@@ -742,7 +906,9 @@ function wireHome(){
       </div>`;
     box.querySelector(".no").onclick = () => render();
     box.querySelector(".yes").onclick = handler(async () => {
+      const betroffen = entriesOf(id);
       await schreibe("Kategorie löschen", () => sb.from("categories").delete().eq("id", id));
+      await bilderWegraeumen(betroffen);
       data.categories = data.categories.filter(c => c.id !== id);
       data.entries    = data.entries.filter(e => e.categoryId !== id);   // die Datenbank löscht mit
       editingCat = null; render(); zeigeStand();
@@ -859,6 +1025,23 @@ function wireRows(){
     });
   });
 
+  app.querySelectorAll("[data-pick]").forEach(inp => inp.addEventListener("change", ev => {
+    const datei = ev.target.files && ev.target.files[0];
+    ev.target.value = "";
+    const e = entryById(inp.dataset.pick);
+    if(datei && e) bildHochladen(e, datei);
+  }));
+
+  app.querySelectorAll("[data-unimg]").forEach(b => b.onclick = handler(() => {
+    const e = entryById(b.dataset.unimg);
+    return e ? bildEntfernen(e) : null;
+  }));
+
+  app.querySelectorAll("[data-big]").forEach(b => b.onclick = () => {
+    const e = entryById(b.dataset.big);
+    if(e && e.imageUrl){ markUsed(e.id); openLightbox(e.imageUrl); }
+  });
+
   app.querySelectorAll("[data-stage]").forEach(b => b.onclick = () => openStage(b.dataset.stage));
 
   app.querySelectorAll("[data-copy]").forEach(b => b.onclick = handler(async () => {
@@ -869,6 +1052,8 @@ function wireRows(){
       name: e.name ? e.name + " (Kopie)" : "",
       price: e.price, note: e.note, duration: e.time,
       position: (e.position ?? 0) + 1
+      // image_path bleibt leer: zwei Zeilen sollen sich keine Datei teilen,
+      // sonst löscht das Entfernen bei der einen das Bild der anderen mit.
     }).select().single());
     data.entries.splice(data.entries.indexOf(e) + 1, 0, ausDb(reihe));
     render(); zeigeStand();
@@ -889,6 +1074,7 @@ function wireRows(){
     tools.querySelector(".no").onclick = () => { tools.innerHTML = restore; wireRows(); };
     tools.querySelector(".yes").onclick = handler(async () => {
       await schreibe("Löschen", () => sb.from("entries").delete().eq("id", id));
+      await bilderWegraeumen([e]);
       data.entries = data.entries.filter(x => x.id !== id);
       render(); zeigeStand();
       melde("Zeile gelöscht");
@@ -965,12 +1151,24 @@ function openStage(id){
   box.className = "stage";
   box.innerHTML = `
     <button class="s-close" title="Schließen">&times;</button>
+    ${e.imageUrl ? `<img src="${e.imageUrl}" alt="">` : ""}
     <div class="s-name">${esc(e.name || "")}</div>
     <div class="s-price">${e.price != null ? money(e.price) + "&nbsp;&euro;" : "&mdash;"}</div>
     ${e.note ? `<div class="s-note">${esc(e.note)}</div>` : ""}
     ${e.time ? `<div class="s-time">Dauer: ${esc(e.time)}</div>` : ""}
     <div class="s-hint">Tippen zum Schließen</div>`;
 
+  const close = () => { box.remove(); document.removeEventListener("keydown", onKey); };
+  const onKey = ev => { if(ev.key === "Escape") close(); };
+  box.onclick = close;
+  document.addEventListener("keydown", onKey);
+  document.body.appendChild(box);
+}
+
+function openLightbox(src){
+  const box = document.createElement("div");
+  box.className = "lightbox";
+  box.innerHTML = `<button title="Schließen">&times;</button><img src="${src}" alt="">`;
   const close = () => { box.remove(); document.removeEventListener("keydown", onKey); };
   const onKey = ev => { if(ev.key === "Escape") close(); };
   box.onclick = close;
