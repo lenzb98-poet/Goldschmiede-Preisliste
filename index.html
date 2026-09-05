@@ -593,9 +593,41 @@ function melde(text, schlimm){
 // Jeder Schreibvorgang läuft hier durch. Ein fehlgeschlagener Preis darf
 // nicht stillschweigend verschwinden — am Tresen wäre der Preis sonst
 // scheinbar geändert und in Wahrheit nicht.
+const schlaf = ms => new Promise(r => setTimeout(r, ms));
+
+/* Ein eben erst ausgestellter Token wird von manchen Supabase-Knoten für
+   den Bruchteil einer Sekunde abgelehnt ("JWT issued at future"): die Uhren
+   der Knoten laufen minimal auseinander, und die App fragt unmittelbar nach
+   der Token-Erneuerung an. In den Protokollen lag jeder Fehlschlag unter
+   einer Sekunde nach Ausstellung, jeder Abruf ab 16 Sekunden lief. Kurz
+   warten und dieselbe Anfrage wiederholen löst es also — aufgeben nicht. */
+function istTokenFehler(fehler){
+  const t = String((fehler && (fehler.message || fehler.msg || fehler.error)) || "").toLowerCase();
+  return t.includes("issued at future") || t.includes("jwt") || t.includes("token");
+}
+const istAbgelaufen = fehler =>
+  /expired|abgelaufen/i.test(String((fehler && fehler.message) || ""));
+
+async function mitGeduld(aktion){
+  const wartezeiten = [500, 1200, 2500];
+  let letzter = null;
+  for(let versuch = 0; versuch <= wartezeiten.length; versuch++){
+    const antwort = await aktion();
+    if(!antwort || !antwort.error) return antwort;
+    letzter = antwort.error;
+    if(!istTokenFehler(letzter) || versuch === wartezeiten.length) break;
+    // Bei einem abgelaufenen Token hilft Warten nicht, ein neuer schon.
+    if(istAbgelaufen(letzter)){
+      try{ await sb.auth.refreshSession(); }catch(_){ /* dann eben nicht */ }
+    }
+    await schlaf(wartezeiten[versuch]);
+  }
+  return { data:null, error: letzter };
+}
+
 async function schreibe(beschreibung, aktion){
   try{
-    const { data, error } = await aktion();
+    const { data, error } = await mitGeduld(aktion);
     if(error) throw error;
     return data;
   }catch(err){
@@ -636,8 +668,8 @@ const ausDb = r => ({
 
 async function ladeAlles(){
   const [k, z] = await Promise.all([
-    sb.from("categories").select("*").order("position"),
-    sb.from("entries").select("*").order("position")
+    mitGeduld(() => sb.from("categories").select("*").order("position")),
+    mitGeduld(() => sb.from("entries").select("*").order("position"))
   ]);
   if(k.error) throw k.error;
   if(z.error) throw z.error;
@@ -651,7 +683,8 @@ async function ladeAlles(){
    Adressen, die nach einiger Zeit verfallen; beim nächsten Öffnen der
    Seite werden sie neu geholt. */
 async function signiere(pfad){
-  const { data: d, error } = await sb.storage.from(BILDER).createSignedUrl(pfad, SIGNIERT_SEK);
+  const { data: d, error } = await mitGeduld(() =>
+    sb.storage.from(BILDER).createSignedUrl(pfad, SIGNIERT_SEK));
   if(error){ console.error("Bildadresse", error); return null; }
   return d.signedUrl;
 }
@@ -659,7 +692,8 @@ async function signiere(pfad){
 async function signiereAlle(){
   const pfade = data.entries.filter(e => e.imagePath).map(e => e.imagePath);
   if(!pfade.length) return;
-  const { data: liste, error } = await sb.storage.from(BILDER).createSignedUrls(pfade, SIGNIERT_SEK);
+  const { data: liste, error } = await mitGeduld(() =>
+    sb.storage.from(BILDER).createSignedUrls(pfade, SIGNIERT_SEK));
   if(error){ console.error("Bildadressen", error); return; }
   const karte = {};
   (liste || []).forEach((x, i) => {
@@ -1376,7 +1410,13 @@ async function zeigeListe(){
     zeigeStand();
   }catch(err){
     console.error(err);
-    app.innerHTML = `<div class="blank">Die Preisliste konnte nicht geladen werden.<br>${esc(err.message || err)}</div>`;
+    app.innerHTML = `<div class="blank">
+        Die Preisliste konnte nicht geladen werden.<br>
+        <span style="font-size:.85rem">${esc(err.message || err)}</span><br><br>
+        <button class="btn" id="nochmal">Nochmal versuchen</button>
+      </div>`;
+    const knopf = document.getElementById("nochmal");
+    if(knopf) knopf.onclick = () => zeigeListe();
   }
 }
 
