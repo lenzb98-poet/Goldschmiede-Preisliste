@@ -111,6 +111,27 @@
   .cat-editor input:focus{outline:none;border-color:var(--gold);}
   .cat-editor-row{display:flex;gap:8px;flex-wrap:wrap;}
 
+  /* Anordnen: Pfeile statt Ziehen. Am Tresen soll nichts gehalten oder
+     gezogen werden müssen, und auf dem Tablet ist Ziehen fummelig. */
+  .ordnen-knopf{
+    margin-left:auto;font-size:.8rem;font-weight:600;
+    color:var(--gold-deep);padding:7px 12px;border-radius:9px;
+    background:var(--gold-wash);
+  }
+  .ordnen-knopf:hover{background:var(--gold);color:#fff;}
+  .cat-move{display:none;gap:8px;padding:0 12px 12px;}
+  .cats.ordnen .cat-move{display:flex;}
+  .cats.ordnen .cat-edit{display:none;}
+  .cats.ordnen .cat-open{pointer-events:none;}   /* nicht versehentlich öffnen */
+  .cats.ordnen .cat{border-color:var(--line-firm);}
+  .cat-move button{
+    flex:1;min-height:46px;border-radius:11px;
+    background:var(--gold-wash);color:var(--gold-deep);
+    font-size:1.2rem;font-weight:600;line-height:1;
+  }
+  .cat-move button:hover:not(:disabled){background:var(--gold);color:#fff;}
+  .cat-move button:disabled{opacity:.3;cursor:default;}
+
   .cat-add{display:flex;gap:10px;margin-top:14px;}
   .cat-add input{
     flex:1;height:var(--tap);padding:0 18px;
@@ -794,6 +815,7 @@ const zuletztBenutzt = () => data.entries
    ============================================================ */
 let view = { screen:"home", categoryId:null };
 let editingCat = null;
+let ordnen = false;            // Kategorien umsortieren statt öffnen
 let query = "";
 
 const app = document.getElementById("app");
@@ -864,9 +886,14 @@ function renderHome(){
   let html = `<section class="section">
     <div class="section-head">
       <h2>Kategorien</h2>
-      <span class="count">${plural(data.entries.length, "Eintrag", "Einträge")} insgesamt</span>
+      <span class="count">${ordnen
+        ? "mit den Pfeilen verschieben"
+        : plural(data.entries.length, "Eintrag", "Einträge") + " insgesamt"}</span>
+      ${data.categories.length > 1
+        ? `<button class="ordnen-knopf" id="ordnenUm">${ordnen ? "fertig" : "anordnen"}</button>`
+        : ""}
     </div>
-    <div class="cats">${data.categories.map(catHTML).join("")}</div>
+    <div class="cats${ordnen ? " ordnen" : ""}">${data.categories.map(catHTML).join("")}</div>
     <div class="cat-add">
       <input type="text" id="newCat" placeholder="Neue Kategorie&hellip;">
       <button class="btn" id="addCat">Anlegen</button>
@@ -887,6 +914,7 @@ function renderHome(){
 
 function catHTML(c){
   const n = entriesOf(c.id).length;
+  const platz = data.categories.indexOf(c);
   return `
   <div class="cat ${editingCat === c.id ? "editing" : ""}" data-cat="${c.id}">
     <button class="cat-open" data-open="${c.id}">
@@ -894,6 +922,10 @@ function catHTML(c){
       <span class="cat-sub">${n === 0 ? "noch leer" : n === 1 ? "1 Eintrag" : n + " Einträge"}</span>
     </button>
     <button class="cat-edit" data-editcat="${c.id}" tabindex="-1" title="Umbenennen oder löschen">&#9998;</button>
+    <div class="cat-move">
+      <button data-vor="${c.id}" tabindex="-1" title="nach vorne"${platz === 0 ? " disabled" : ""}>&#8592;</button>
+      <button data-zurueck="${c.id}" tabindex="-1" title="nach hinten"${platz === data.categories.length - 1 ? " disabled" : ""}>&#8594;</button>
+    </div>
     <div class="cat-editor">
       <input type="text" data-catname="${c.id}" value="${esc(c.name)}" placeholder="Name der Kategorie">
       <div class="cat-editor-row">
@@ -908,7 +940,7 @@ function catHTML(c){
 function wireHome(){
   app.querySelectorAll("[data-open]").forEach(b => b.onclick = () => {
     view = { screen:"category", categoryId: b.dataset.open };
-    editingCat = null;
+    editingCat = null; ordnen = false;
     render(); scrollTop();
   });
 
@@ -918,6 +950,18 @@ function wireHome(){
     const f = app.querySelector(`[data-catname="${editingCat}"]`);
     if(f){ f.focus(); f.select(); }
   });
+
+  const umschalter = document.getElementById("ordnenUm");
+  if(umschalter) umschalter.onclick = () => {
+    ordnen = !ordnen;
+    editingCat = null;
+    render();
+  };
+
+  app.querySelectorAll("[data-vor]").forEach(b =>
+    b.onclick = handler(() => verschiebeKategorie(b.dataset.vor, -1)));
+  app.querySelectorAll("[data-zurueck]").forEach(b =>
+    b.onclick = handler(() => verschiebeKategorie(b.dataset.zurueck, +1)));
 
   app.querySelectorAll("[data-cancelcat]").forEach(b => b.onclick = () => {
     editingCat = null; render();
@@ -966,6 +1010,28 @@ function wireHome(){
   });
   document.getElementById("addCat").onclick = add;
   newCat.onkeydown = ev => { if(ev.key === "Enter") add(); };
+}
+
+// Nach dem Tausch wird durchnummeriert und nur geschrieben, was sich
+// wirklich geändert hat. Das räumt nebenbei doppelte oder lückenhafte
+// Positionen auf, die ein Import hinterlassen haben könnte.
+async function verschiebeKategorie(id, richtung){
+  const liste = data.categories.slice();
+  const i = liste.findIndex(c => c.id === id);
+  const j = i + richtung;
+  if(i < 0 || j < 0 || j >= liste.length) return;
+
+  const merk = liste[i]; liste[i] = liste[j]; liste[j] = merk;
+
+  const geaendert = [];
+  liste.forEach((c, platz) => { if(c.position !== platz){ c.position = platz; geaendert.push(c); } });
+  for(const c of geaendert){
+    await schreibe("Reihenfolge ändern", () =>
+      sb.from("categories").update({ position: c.position }).eq("id", c.id));
+  }
+
+  data.categories = liste;
+  render();
 }
 
 async function saveCat(id){
