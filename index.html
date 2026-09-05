@@ -132,6 +132,20 @@
   .cat-move button:hover:not(:disabled){background:var(--gold);color:#fff;}
   .cat-move button:disabled{opacity:.3;cursor:default;}
 
+  /* Die bewegte Kachel hebt sich kurz hervor, damit erkennbar ist,
+     welche verschoben wurde — nicht nur, dass sich etwas geändert hat. */
+  @keyframes bestaetigt{
+    0%   {background:var(--gold-wash);border-color:var(--gold);}
+    100% {background:var(--paper);border-color:var(--line-firm);}
+  }
+  .cat.bewegt{animation:bestaetigt .6s ease-out;}
+
+  /* Wer weniger Bewegung eingestellt hat, bekommt keine. */
+  @media (prefers-reduced-motion: reduce){
+    .cat.bewegt{animation:none;}
+    .cat{transition:none !important;}
+  }
+
   .cat-add{display:flex;gap:10px;margin-top:14px;}
   .cat-add input{
     flex:1;height:var(--tap);padding:0 18px;
@@ -1012,6 +1026,49 @@ function wireHome(){
   newCat.onkeydown = ev => { if(ev.key === "Enter") add(); };
 }
 
+/* Kacheln gleiten an ihren neuen Platz, statt dorthin zu springen.
+   Gemessen wird vor dem Neuzeichnen, danach werden die Kacheln per
+   Transform optisch an den alten Ort zurückgesetzt und von dort
+   weggefahren — so bewegt sich auch ein umbrechendes Raster richtig. */
+function mitBewegung(neuzeichnen, hervorheben){
+  const ruhig = window.matchMedia
+    && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if(ruhig){ neuzeichnen(); return; }
+
+  const vorher = new Map();
+  app.querySelectorAll(".cat").forEach(el => vorher.set(el.dataset.cat, el.getBoundingClientRect()));
+
+  neuzeichnen();
+
+  const kacheln = [...app.querySelectorAll(".cat")];
+  let bewegt = false;
+  kacheln.forEach(el => {
+    const alt = vorher.get(el.dataset.cat);
+    if(!alt) return;
+    const jetzt = el.getBoundingClientRect();
+    const dx = alt.left - jetzt.left, dy = alt.top - jetzt.top;
+    if(!dx && !dy) return;
+    bewegt = true;
+    el.style.transition = "none";
+    el.style.transform = `translate(${dx}px, ${dy}px)`;
+  });
+  if(!bewegt) return;
+
+  void app.offsetWidth;                 // Layout erzwingen, sonst kein Übergang
+
+  kacheln.forEach(el => {
+    if(!el.style.transform) return;
+    el.style.transition = "transform .3s cubic-bezier(.2,.7,.3,1)";
+    el.style.transform = "";
+    el.addEventListener("transitionend", () => {
+      el.style.transition = ""; el.style.transform = "";
+    }, { once:true });
+  });
+
+  const ziel = app.querySelector(`.cat[data-cat="${hervorheben}"]`);
+  if(ziel) ziel.classList.add("bewegt");
+}
+
 // Nach dem Tausch wird durchnummeriert und nur geschrieben, was sich
 // wirklich geändert hat. Das räumt nebenbei doppelte oder lückenhafte
 // Positionen auf, die ein Import hinterlassen haben könnte.
@@ -1021,17 +1078,28 @@ async function verschiebeKategorie(id, richtung){
   const j = i + richtung;
   if(i < 0 || j < 0 || j >= liste.length) return;
 
-  const merk = liste[i]; liste[i] = liste[j]; liste[j] = merk;
+  // Für den Fall, dass das Schreiben scheitert: alter Stand zum Zurücklegen
+  const sicherung = data.categories.map(c => ({ kachel:c, position:c.position }));
 
+  const merk = liste[i]; liste[i] = liste[j]; liste[j] = merk;
   const geaendert = [];
   liste.forEach((c, platz) => { if(c.position !== platz){ c.position = platz; geaendert.push(c); } });
-  for(const c of geaendert){
-    await schreibe("Reihenfolge ändern", () =>
-      sb.from("categories").update({ position: c.position }).eq("id", c.id));
-  }
 
+  // Erst zeigen, dann schreiben: der Griff soll sofort sitzen und nicht
+  // erst nach der Antwort aus dem Netz.
   data.categories = liste;
-  render();
+  mitBewegung(() => render(), id);
+
+  try{
+    for(const c of geaendert){
+      await schreibe("Reihenfolge ändern", () =>
+        sb.from("categories").update({ position: c.position }).eq("id", c.id));
+    }
+  }catch(_){
+    sicherung.forEach(x => { x.kachel.position = x.position; });
+    data.categories = sicherung.map(x => x.kachel);
+    mitBewegung(() => render(), id);    // sichtbar zurückrücken
+  }
 }
 
 async function saveCat(id){
