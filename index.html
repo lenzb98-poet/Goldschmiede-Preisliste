@@ -276,7 +276,20 @@
 
   /* ---------- Kategorie-Ansicht ---------- */
   .cathead{display:flex;align-items:center;gap:6px;margin-bottom:18px;}
-  .cathead h2{margin:0;font-size:1.35rem;font-weight:600;flex:1;min-width:0;}
+  .cathead-text{flex:1;min-width:0;}
+  .cathead h2{margin:0;font-size:1.35rem;font-weight:600;}
+  /* Zeigt beim Unterordner, wo man steht */
+  .cat-eltern{
+    font-size:.78rem;color:var(--ink-soft);letter-spacing:.04em;
+    text-transform:uppercase;font-weight:700;margin-bottom:1px;
+  }
+  /* Ruhiger Knopf, solange eine Kategorie noch keine Unterordner hat */
+  .ordner-auf{
+    display:block;width:100%;min-height:46px;margin-bottom:18px;
+    border:1.5px dashed var(--line-firm);border-radius:var(--r);
+    color:var(--ink-soft);font-size:.92rem;font-weight:600;
+  }
+  .ordner-auf:hover{background:var(--gold-wash);color:var(--gold-deep);border-color:var(--gold);}
   .back{width:var(--tap);height:var(--tap);border-radius:12px;font-size:1.3rem;color:var(--gold-deep);flex-shrink:0;}
   .back:hover{background:var(--gold-wash);}
 
@@ -686,6 +699,29 @@ const catById   = id => data.categories.find(c => c.id === id);
 const entryById = id => data.entries.find(e => e.id === id);
 const entriesOf = id => data.entries.filter(e => e.categoryId === id);
 
+/* Ein Unterordner ist dasselbe wie eine Kategorie, nur mit Elternteil.
+   Die Datenbank lässt genau eine Ebene zu. */
+const geschwisterVon = elternId => data.categories
+  .filter(c => (c.parentId || null) === (elternId || null))
+  .sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
+
+const oberKategorien = () => geschwisterVon(null);
+const unterOrdner    = id => geschwisterVon(id);
+const istUnterordner = c => !!(c && c.parentId);
+
+// Zeilen einer Kategorie einschließlich der Zeilen ihrer Unterordner
+function zeilenImBaum(id){
+  const ids = [id, ...unterOrdner(id).map(c => c.id)];
+  return data.entries.filter(e => ids.includes(e.categoryId));
+}
+
+// "Reparatur › Ringe"
+function pfad(cat){
+  if(!cat) return "";
+  const eltern = cat.parentId ? catById(cat.parentId) : null;
+  return eltern ? eltern.name + " › " + cat.name : cat.name;
+}
+
 // Die Datenbank nennt die Dauer "duration" ("time" ist in SQL belegt)
 // und schreibt in Schlangenschrift. Hier wird einmal übersetzt.
 const ausDb = r => ({
@@ -708,7 +744,7 @@ async function ladeAlles(){
   ]);
   if(k.error) throw k.error;
   if(z.error) throw z.error;
-  data.categories = k.data.map(c => ({ id:c.id, name:c.name, position:c.position }));
+  data.categories = k.data.map(c => ({ id:c.id, name:c.name, position:c.position, parentId:c.parent_id || null }));
   data.entries    = z.data.map(ausDb);
   await signiereAlle();
 }
@@ -830,6 +866,7 @@ const zuletztBenutzt = () => data.entries
 let view = { screen:"home", categoryId:null };
 let editingCat = null;
 let ordnen = false;            // Kategorien umsortieren statt öffnen
+let ordnerFeldOffen = false;   // Anlegefeld in einer Kategorie ausgeklappt
 let query = "";
 
 const app = document.getElementById("app");
@@ -877,7 +914,7 @@ function rowHTML(e, opts){
     <div class="r-meta">
       <input class="f f-note" data-f="note" data-id="${e.id}" value="${esc(e.note)}" placeholder="Notiz">
       <input class="f f-time" data-f="time" data-id="${e.id}" value="${esc(e.time)}" placeholder="Dauer in Std.">
-      ${opts.showCategory && cat ? `<div class="r-cat">${esc(cat.name)}</div>` : ""}
+      ${opts.showCategory && cat ? `<div class="r-cat">${esc(pfad(cat))}</div>` : ""}
     </div>
 
     <div class="r-side">
@@ -894,54 +931,37 @@ function rowHTML(e, opts){
 /* ============================================================
    Startseite
    ============================================================ */
-function renderHome(){
-  const recent = zuletztBenutzt();
+/* ============================================================
+   Kategorien und Unterordner — dieselbe Bedienung auf beiden Ebenen
+   ============================================================ */
 
-  let html = `<section class="section">
-    <div class="section-head">
-      <h2>Kategorien</h2>
-      <span class="count">${ordnen
-        ? "mit den Pfeilen verschieben"
-        : plural(data.entries.length, "Eintrag", "Einträge") + " insgesamt"}</span>
-      ${data.categories.length > 1
-        ? `<button class="ordnen-knopf" id="ordnenUm">${ordnen ? "fertig" : "anordnen"}</button>`
-        : ""}
-    </div>
-    <div class="cats${ordnen ? " ordnen" : ""}">${data.categories.map(catHTML).join("")}</div>
-    <div class="cat-add">
-      <input type="text" id="newCat" placeholder="Neue Kategorie&hellip;">
-      <button class="btn" id="addCat">Anlegen</button>
-    </div>
-  </section>`;
-
-  if(recent.length){
-    html += `<section class="section">
-      <div class="section-head"><h2>Zuletzt benutzt</h2></div>
-      <div class="rows">${recent.map(e => rowHTML(e, { showCategory:true })).join("")}</div>
-    </section>`;
-  }
-
-  app.innerHTML = html;
-  wireHome();
-  wireRows();
+// Was unter dem Namen einer Kachel steht
+function kachelUnterzeile(c){
+  const ordner = unterOrdner(c.id).length;
+  const zeilen = zeilenImBaum(c.id).length;
+  if(ordner && !zeilen) return plural(ordner, "Unterordner", "Unterordner");
+  if(ordner) return plural(ordner, "Unterordner", "Unterordner") + " · " +
+                    plural(zeilen, "Eintrag", "Einträge");
+  return zeilen === 0 ? "noch leer" : plural(zeilen, "Eintrag", "Einträge");
 }
 
 function catHTML(c){
-  const n = entriesOf(c.id).length;
-  const platz = data.categories.indexOf(c);
+  const reihe = geschwisterVon(c.parentId || null);
+  const platz = reihe.findIndex(x => x.id === c.id);
+  const unten = istUnterordner(c);
   return `
   <div class="cat ${editingCat === c.id ? "editing" : ""}" data-cat="${c.id}">
     <button class="cat-open" data-open="${c.id}">
       <span class="cat-name">${esc(c.name)}</span>
-      <span class="cat-sub">${n === 0 ? "noch leer" : n === 1 ? "1 Eintrag" : n + " Einträge"}</span>
+      <span class="cat-sub">${kachelUnterzeile(c)}</span>
     </button>
     <button class="cat-edit" data-editcat="${c.id}" tabindex="-1" title="Umbenennen oder löschen">&#9998;</button>
     <div class="cat-move">
       <button data-vor="${c.id}" tabindex="-1" title="nach vorne"${platz === 0 ? " disabled" : ""}>&#8592;</button>
-      <button data-zurueck="${c.id}" tabindex="-1" title="nach hinten"${platz === data.categories.length - 1 ? " disabled" : ""}>&#8594;</button>
+      <button data-zurueck="${c.id}" tabindex="-1" title="nach hinten"${platz === reihe.length - 1 ? " disabled" : ""}>&#8594;</button>
     </div>
     <div class="cat-editor">
-      <input type="text" data-catname="${c.id}" value="${esc(c.name)}" placeholder="Name der Kategorie">
+      <input type="text" data-catname="${c.id}" value="${esc(c.name)}" placeholder="${unten ? "Name des Unterordners" : "Name der Kategorie"}">
       <div class="cat-editor-row">
         <button class="btn" data-savecat="${c.id}">Sichern</button>
         <button class="btn ghost" data-cancelcat="1">Zurück</button>
@@ -951,10 +971,42 @@ function catHTML(c){
   </div>`;
 }
 
-function wireHome(){
+/* Der Abschnitt mit den Kacheln. elternId null = oberste Ebene.
+   Innerhalb einer Kategorie bleibt das Anlegefeld zu, solange es keine
+   Unterordner gibt — sonst stünde auf jeder Kategorieseite ein Feld im
+   Weg, das man selten braucht. */
+function gitterHTML(elternId){
+  const liste = geschwisterVon(elternId);
+  const oben  = elternId === null;
+
+  if(!oben && !liste.length && !ordnerFeldOffen){
+    return `<button class="ordner-auf" id="ordnerAuf">+ &nbsp;Unterordner anlegen</button>`;
+  }
+
+  const zaehlung = oben
+    ? plural(data.entries.length, "Eintrag", "Einträge") + " insgesamt"
+    : plural(liste.length, "Unterordner", "Unterordner");
+
+  return `<section class="section">
+    <div class="section-head">
+      <h2>${oben ? "Kategorien" : "Unterordner"}</h2>
+      <span class="count">${ordnen ? "mit den Pfeilen verschieben" : zaehlung}</span>
+      ${liste.length > 1
+        ? `<button class="ordnen-knopf" id="ordnenUm">${ordnen ? "fertig" : "anordnen"}</button>`
+        : ""}
+    </div>
+    <div class="cats${ordnen ? " ordnen" : ""}">${liste.map(catHTML).join("")}</div>
+    <div class="cat-add">
+      <input type="text" id="newCat" placeholder="${oben ? "Neue Kategorie…" : "Neuer Unterordner…"}">
+      <button class="btn" id="addCat">Anlegen</button>
+    </div>
+  </section>`;
+}
+
+function wireGitter(elternId){
   app.querySelectorAll("[data-open]").forEach(b => b.onclick = () => {
     view = { screen:"category", categoryId: b.dataset.open };
-    editingCat = null; ordnen = false;
+    editingCat = null; ordnen = false; ordnerFeldOffen = false;
     render(); scrollTop();
   });
 
@@ -964,6 +1016,14 @@ function wireHome(){
     const f = app.querySelector(`[data-catname="${editingCat}"]`);
     if(f){ f.focus(); f.select(); }
   });
+
+  const aufklappen = document.getElementById("ordnerAuf");
+  if(aufklappen) aufklappen.onclick = () => {
+    ordnerFeldOffen = true;
+    render();
+    const f = document.getElementById("newCat");
+    if(f) f.focus();
+  };
 
   const umschalter = document.getElementById("ordnenUm");
   if(umschalter) umschalter.onclick = () => {
@@ -990,40 +1050,74 @@ function wireHome(){
   });
 
   app.querySelectorAll("[data-delcat]").forEach(b => b.onclick = () => {
-    const id = b.dataset.delcat, cat = catById(id), n = entriesOf(id).length;
+    const id = b.dataset.delcat, cat = catById(id);
+    const ordner = unterOrdner(id).length;
+    const zeilen = zeilenImBaum(id).length;
+    const anhang = [];
+    if(ordner) anhang.push(plural(ordner, "Unterordner", "Unterordnern"));
+    if(zeilen) anhang.push(plural(zeilen, "Eintrag", "Einträgen"));
+
     const box = b.closest(".cat-editor-row");
     box.innerHTML = `<div class="confirm">
-        <span>„${esc(cat.name)}“${n ? ` mit ${plural(n, "Eintrag", "Einträgen")}` : ""} löschen?</span>
+        <span>„${esc(cat.name)}“${anhang.length ? " mit " + anhang.join(" und ") : ""} löschen?</span>
         <button class="yes">Ja, löschen</button><button class="no">Abbrechen</button>
       </div>`;
     box.querySelector(".no").onclick = () => render();
     box.querySelector(".yes").onclick = handler(async () => {
-      const betroffen = entriesOf(id);
-      await schreibe("Kategorie löschen", () => sb.from("categories").delete().eq("id", id));
+      // Die Bilder der Unterordner müssen mit weg — die Kaskade in der
+      // Datenbank erreicht die Dateiablage nicht.
+      const betroffen = zeilenImBaum(id);
+      const wegIds = [id, ...unterOrdner(id).map(c => c.id)];
+      await schreibe("Löschen", () => sb.from("categories").delete().eq("id", id));
       await bilderWegraeumen(betroffen);
-      data.categories = data.categories.filter(c => c.id !== id);
-      data.entries    = data.entries.filter(e => e.categoryId !== id);   // die Datenbank löscht mit
-      editingCat = null; render(); zeigeStand();
-      melde("Kategorie gelöscht");
+      data.categories = data.categories.filter(c => !wegIds.includes(c.id));
+      data.entries    = data.entries.filter(e => !wegIds.includes(e.categoryId));
+      editingCat = null;
+      if(wegIds.includes(view.categoryId)) view = { screen:"home", categoryId:null };
+      render(); zeigeStand();
+      melde(ordner ? "Kategorie samt Unterordnern gelöscht" : "Gelöscht");
     });
   });
 
-  const newCat = document.getElementById("newCat");
-  const add = handler(async () => {
-    const name = newCat.value.trim();
+  const neuFeld = document.getElementById("newCat");
+  if(!neuFeld) return;
+  const anlegen = handler(async () => {
+    const name = neuFeld.value.trim();
     if(!name) return;
-    newCat.value = "";
-    const position = data.categories.length
-      ? Math.max(...data.categories.map(c => c.position ?? 0)) + 1 : 0;
-    const reihe = await schreibe("Kategorie anlegen", () =>
-      sb.from("categories").insert({ name, position }).select().single());
-    data.categories.push({ id: reihe.id, name: reihe.name, position: reihe.position });
+    neuFeld.value = "";
+    const reihe = geschwisterVon(elternId);
+    const position = reihe.length ? Math.max(...reihe.map(c => c.position ?? 0)) + 1 : 0;
+    const angelegt = await schreibe(elternId ? "Unterordner anlegen" : "Kategorie anlegen", () =>
+      sb.from("categories").insert({ name, position, parent_id: elternId }).select().single());
+    data.categories.push({
+      id: angelegt.id, name: angelegt.name,
+      position: angelegt.position, parentId: angelegt.parent_id || null
+    });
     render(); zeigeStand();
-    const again = document.getElementById("newCat");
-    if(again) again.focus();
+    const wieder = document.getElementById("newCat");
+    if(wieder) wieder.focus();
   });
-  document.getElementById("addCat").onclick = add;
-  newCat.onkeydown = ev => { if(ev.key === "Enter") add(); };
+  document.getElementById("addCat").onclick = anlegen;
+  neuFeld.onkeydown = ev => { if(ev.key === "Enter") anlegen(); };
+}
+
+/* ============================================================
+   Startseite
+   ============================================================ */
+function renderHome(){
+  const recent = zuletztBenutzt();
+  let html = gitterHTML(null);
+
+  if(recent.length){
+    html += `<section class="section">
+      <div class="section-head"><h2>Zuletzt benutzt</h2></div>
+      <div class="rows">${recent.map(e => rowHTML(e, { showCategory:true })).join("")}</div>
+    </section>`;
+  }
+
+  app.innerHTML = html;
+  wireGitter(null);
+  wireRows();
 }
 
 /* Kacheln gleiten an ihren neuen Platz, statt dorthin zu springen.
@@ -1073,21 +1167,26 @@ function mitBewegung(neuzeichnen, hervorheben){
 // wirklich geändert hat. Das räumt nebenbei doppelte oder lückenhafte
 // Positionen auf, die ein Import hinterlassen haben könnte.
 async function verschiebeKategorie(id, richtung){
-  const liste = data.categories.slice();
+  const cat = catById(id);
+  if(!cat) return;
+
+  // Verschoben wird nur innerhalb einer Ebene — Unterordner bleiben in
+  // ihrer Kategorie, Kategorien unter sich.
+  const liste = geschwisterVon(cat.parentId || null);
   const i = liste.findIndex(c => c.id === id);
   const j = i + richtung;
   if(i < 0 || j < 0 || j >= liste.length) return;
 
   // Für den Fall, dass das Schreiben scheitert: alter Stand zum Zurücklegen
-  const sicherung = data.categories.map(c => ({ kachel:c, position:c.position }));
+  const sicherung = liste.map(c => ({ kachel:c, position:c.position }));
 
   const merk = liste[i]; liste[i] = liste[j]; liste[j] = merk;
   const geaendert = [];
   liste.forEach((c, platz) => { if(c.position !== platz){ c.position = platz; geaendert.push(c); } });
 
   // Erst zeigen, dann schreiben: der Griff soll sofort sitzen und nicht
-  // erst nach der Antwort aus dem Netz.
-  data.categories = liste;
+  // erst nach der Antwort aus dem Netz. Die Ansicht sortiert über die
+  // Positionen, das Umhängen im Array erübrigt sich.
   mitBewegung(() => render(), id);
 
   try{
@@ -1097,7 +1196,6 @@ async function verschiebeKategorie(id, richtung){
     }
   }catch(_){
     sicherung.forEach(x => { x.kachel.position = x.position; });
-    data.categories = sicherung.map(x => x.kachel);
     mitBewegung(() => render(), id);    // sichtbar zurückrücken
   }
 }
@@ -1121,20 +1219,33 @@ function renderCategory(id){
   const cat = catById(id);
   if(!cat){ view = { screen:"home", categoryId:null }; return render(); }
   const list = entriesOf(id);
+  const eltern = cat.parentId ? catById(cat.parentId) : null;
+  const unten = istUnterordner(cat);
 
   app.innerHTML = `
     <div class="cathead">
-      <button class="back" id="back" title="Zurück zur Übersicht">&#8592;</button>
-      <h2>${esc(cat.name)}</h2>
+      <button class="back" id="back" title="${eltern ? "Zurück zu " + esc(eltern.name) : "Zurück zur Übersicht"}">&#8592;</button>
+      <div class="cathead-text">
+        ${eltern ? `<div class="cat-eltern">${esc(eltern.name)}</div>` : ""}
+        <h2>${esc(cat.name)}</h2>
+      </div>
     </div>
+
+    ${unten ? "" : gitterHTML(id)}
+
     <div class="rows">${
       list.length ? list.map(e => rowHTML(e)).join("")
-                  : `<div class="blank">Noch nichts eingetragen.<br>Unten eine Zeile hinzufügen.</div>`
+                  : `<div class="blank">Hier steht noch nichts.<br>Unten eine Zeile hinzufügen.</div>`
     }</div>
     <button class="row-add" id="addRow">+ &nbsp;Zeile hinzufügen</button>`;
 
+  if(!unten) wireGitter(id);
+
   document.getElementById("back").onclick = () => {
-    view = { screen:"home", categoryId:null }; render(); scrollTop();
+    view = { screen:"category", categoryId: cat.parentId || null };
+    if(!cat.parentId) view = { screen:"home", categoryId:null };
+    editingCat = null; ordnen = false; ordnerFeldOffen = false;
+    render(); scrollTop();
   };
   document.getElementById("addRow").onclick = handler(async () => {
     const geschwister = entriesOf(id);
@@ -1374,7 +1485,7 @@ function clearSearch(){
 document.getElementById("exportBtn").onclick = () => {
   const inhalt = {
     exportiert_am: new Date().toISOString(),
-    categories: data.categories.map(c => ({ id:c.id, name:c.name, position:c.position })),
+    categories: data.categories.map(c => ({ id:c.id, name:c.name, position:c.position, parentId:c.parentId || null })),
     entries: data.entries.map(e => ({
       id:e.id, categoryId:e.categoryId, name:e.name, price:e.price,
       priceDate:e.priceDate, note:e.note, time:e.time, position:e.position
@@ -1441,17 +1552,33 @@ async function importiere(incoming, ersetzen){
       data.categories = []; data.entries = [];
     }
 
-    // Kategorien anlegen bzw. bestehende nach Namen wiederverwenden
+    // Erst die Oberkategorien, dann die Unterordner — ein Unterordner
+    // braucht sein Elternteil, bevor er angelegt werden kann.
     const zuordnung = {};
-    for(const c of incoming.categories){
-      const gleich = data.categories.find(x => x.name.toLowerCase() === String(c.name).toLowerCase());
+    const eingehend = incoming.categories.slice();
+    const reihenfolge = [
+      ...eingehend.filter(c => !c.parentId),
+      ...eingehend.filter(c => c.parentId)
+    ];
+
+    for(const c of reihenfolge){
+      const elternNeu = c.parentId ? (zuordnung[c.parentId] || null) : null;
+      // Namen nur innerhalb derselben Ebene zusammenführen
+      const gleich = data.categories.find(x =>
+        x.name.toLowerCase() === String(c.name).toLowerCase() &&
+        (x.parentId || null) === elternNeu);
       if(gleich){ zuordnung[c.id] = gleich.id; continue; }
-      const position = data.categories.length
-        ? Math.max(...data.categories.map(x => x.position ?? 0)) + 1 : 0;
-      const reihe = await schreibe("Kategorie anlegen", () =>
-        sb.from("categories").insert({ name: String(c.name), position }).select().single());
-      data.categories.push({ id: reihe.id, name: reihe.name, position: reihe.position });
-      zuordnung[c.id] = reihe.id;
+
+      const reihe = geschwisterVon(elternNeu);
+      const position = reihe.length ? Math.max(...reihe.map(x => x.position ?? 0)) + 1 : 0;
+      const angelegt = await schreibe("Kategorie anlegen", () =>
+        sb.from("categories").insert({ name: String(c.name), position, parent_id: elternNeu })
+          .select().single());
+      data.categories.push({
+        id: angelegt.id, name: angelegt.name,
+        position: angelegt.position, parentId: angelegt.parent_id || null
+      });
+      zuordnung[c.id] = angelegt.id;
     }
 
     // Zeilen in einem Rutsch. Das Preisdatum aus der Datei wird
@@ -1501,10 +1628,13 @@ async function importiere(incoming, ersetzen){
 function zeigeStand(nachricht){
   const note = document.getElementById("dataNote");
   const n = data.entries.length;
+  const oben = oberKategorien().length;
+  const unten = data.categories.length - oben;
   note.innerHTML =
     (nachricht ? `<b>${esc(nachricht)}</b><br>` : "") +
     `Gespeichert bei Supabase — <b>${n}</b> ${n === 1 ? "Zeile" : "Zeilen"} in ` +
-    `<b>${plural(data.categories.length, "Kategorie", "Kategorien")}</b>. ` +
+    `<b>${plural(oben, "Kategorie", "Kategorien")}</b>` +
+    (unten ? ` und <b>${plural(unten, "Unterordner", "Unterordnern")}</b>` : "") + `. ` +
     `Änderungen sind sofort auf allen Geräten sichtbar. ` +
     `Ein Export bleibt trotzdem sinnvoll, falls einmal etwas versehentlich gelöscht wird.`;
 }
